@@ -15,6 +15,11 @@ export class BlueskyClient {
     async init() {
         const identifier = this.runtime.getSetting("BLUESKY_IDENTIFIER");
         const password = this.runtime.getSetting("BLUESKY_APP_PASSWORD");
+
+        if (!identifier || !password) {
+            throw new Error("Missing Bluesky credentials. Please set BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD.");
+        }
+
         await this.agent.login({ identifier, password });
     }
 }
