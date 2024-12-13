@@ -5,11 +5,12 @@
     "type": "module",
     "types": "dist/index.d.ts",
     "dependencies": {
-        "@atproto/api": "^0.3.0",
-        "@atproto/identity": "^0.3.0"
+        "@atproto/api": "^0.13.20",
+        "@atproto/identity": "^0.4.3"
     },
     "peerDependencies": {
-        "@ai16z/eliza": "workspace:*"
+        "@ai16z/eliza": "workspace:*",
+        "@ai16z/core": "workspace:*"
     },
     "devDependencies": {
         "@typescript-eslint/eslint-plugin": "^6.0.0",
