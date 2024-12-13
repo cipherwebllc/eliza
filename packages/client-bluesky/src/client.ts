@@ -32,30 +32,42 @@ export class BlueskyClient implements Client {
     }
 
     async createMessage(content: Content, roomId: UUID): Promise<Memory> {
-        const blueskyPost: BlueskyPost = {
-            text: content.text
-        };
+        // Format message according to core package format
+        const shortId = (this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID).slice(-5);
+        const timestamp = new Date().getTime();
+        const formattedTimestamp = this.formatTimestamp(timestamp);
+
+        let messageText = `(${formattedTimestamp}) [${shortId}] ${this.runtime.getSetting("BLUESKY_NAME") || "Unknown User"}: ${content.text}`;
 
         // Handle attachments if present
         if (content.attachments && content.attachments.length > 0) {
-            // Add attachment info to the post text since Bluesky doesn't support direct file uploads
-            blueskyPost.text += "\n\nAttachments: " + content.attachments
+            messageText += ` (Attachments: ${content.attachments
                 .map(media => `[${media.id} - ${media.title} (${media.url})]`)
-                .join(", ");
+                .join(", ")})`;
         }
+
+        // Add action if present
+        if (content.action && content.action !== "null") {
+            messageText += ` (${content.action})`;
+        }
+
+        const blueskyPost: BlueskyPost = {
+            text: messageText
+        };
 
         const post = await this.agent.post({
             text: blueskyPost.text,
-            createdAt: new Date().toISOString(),
+            createdAt: new Date(timestamp).toISOString(),
         });
 
         return {
             id: post.uri as UUID,
             userId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
             roomId,
-            createdAt: Date.now(),
+            createdAt: timestamp,
             content: {
                 ...content,
+                text: messageText,
                 action: content.action || undefined,
             },
             agentId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
@@ -68,21 +80,31 @@ export class BlueskyClient implements Client {
         }
 
         const replyId = replyTo.id.toString();
+        const shortId = (this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID).slice(-5);
+        const timestamp = new Date().getTime();
+        const formattedTimestamp = this.formatTimestamp(timestamp);
+
+        let messageText = `(${formattedTimestamp}) [${shortId}] ${this.runtime.getSetting("BLUESKY_NAME") || "Unknown User"}: ${content.text}`;
+
+        // Handle attachments if present
+        if (content.attachments && content.attachments.length > 0) {
+            messageText += ` (Attachments: ${content.attachments
+                .map(media => `[${media.id} - ${media.title} (${media.url})]`)
+                .join(", ")})`;
+        }
+
+        // Add action if present
+        if (content.action && content.action !== "null") {
+            messageText += ` (${content.action})`;
+        }
+
         const blueskyPost: BlueskyPost = {
-            text: content.text,
+            text: messageText,
             replyTo: {
                 uri: replyId,
                 cid: replyId
             }
         };
-
-        // Handle attachments if present
-        if (content.attachments && content.attachments.length > 0) {
-            // Add attachment info to the post text since Bluesky doesn't support direct file uploads
-            blueskyPost.text += "\n\nAttachments: " + content.attachments
-                .map(media => `[${media.id} - ${media.title} (${media.url})]`)
-                .join(", ");
-        }
 
         const post = await this.agent.post({
             text: blueskyPost.text,
@@ -90,16 +112,17 @@ export class BlueskyClient implements Client {
                 root: { uri: replyId, cid: replyId },
                 parent: { uri: replyId, cid: replyId },
             },
-            createdAt: new Date().toISOString(),
+            createdAt: new Date(timestamp).toISOString(),
         });
 
         return {
             id: post.uri as UUID,
             userId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
             roomId,
-            createdAt: Date.now(),
+            createdAt: timestamp,
             content: {
                 ...content,
+                text: messageText,
                 inReplyTo: replyTo.id,
                 action: content.action || undefined,
             },
@@ -109,5 +132,26 @@ export class BlueskyClient implements Client {
 
     async deleteMessage(messageId: UUID): Promise<void> {
         await this.agent.deletePost(messageId);
+    }
+
+    private formatTimestamp(messageDate: number): string {
+        const now = new Date();
+        const diff = now.getTime() - messageDate;
+
+        const absDiff = Math.abs(diff);
+        const seconds = Math.floor(absDiff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (absDiff < 60000) {
+            return "just now";
+        } else if (minutes < 60) {
+            return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
+        } else if (hours < 24) {
+            return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+        } else {
+            return `${days} day${days !== 1 ? "s" : ""} ago`;
+        }
     }
 }
