@@ -1,10 +1,11 @@
 import { BskyAgent } from "@atproto/api";
-import { IAgentRuntime, Memory, Content, UUID } from "@ai16z/eliza";
+import { IAgentRuntime, Memory, Content, UUID, Client } from "@ai16z/eliza";
 import { BlueskyPost } from "./post.js";
 
-export class BlueskyClient {
+export class BlueskyClient implements Client {
     agent: BskyAgent;
     runtime: IAgentRuntime;
+    type = "bluesky";
 
     constructor(runtime: IAgentRuntime) {
         this.runtime = runtime;
@@ -13,7 +14,8 @@ export class BlueskyClient {
         });
     }
 
-    async init() {
+    async start(runtime: IAgentRuntime): Promise<void> {
+        this.runtime = runtime;
         const identifier = this.runtime.getSetting("BLUESKY_IDENTIFIER");
         const password = this.runtime.getSetting("BLUESKY_APP_PASSWORD");
 
@@ -22,6 +24,11 @@ export class BlueskyClient {
         }
 
         await this.agent.login({ identifier, password });
+    }
+
+    async stop(): Promise<void> {
+        // Cleanup any resources if needed
+        return;
     }
 
     async createMessage(content: Content, roomId: UUID): Promise<Memory> {
@@ -78,5 +85,9 @@ export class BlueskyClient {
             },
             agentId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
         };
+    }
+
+    async deleteMessage(messageId: UUID): Promise<void> {
+        await this.agent.deletePost(messageId);
     }
 }
