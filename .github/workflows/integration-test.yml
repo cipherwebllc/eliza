@@ -18,7 +18,7 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
       - name: Run integration tests
         run: |
           timeout 300 pnpm run integrationTests
@@ -35,7 +35,7 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
       - name: Run smoke tests
         run: |
           timeout 300 pnpm run smokeTests
