@@ -15,7 +15,7 @@ export interface MastodonPoll {
 export interface MastodonPost {
     text: string;
     replyToId?: string;
-    visibility?: 'public' | 'unlisted' | 'private' | 'direct';
+    visibility?: "public" | "unlisted" | "private" | "direct";
     sensitive?: boolean;
     spoilerText?: string;
     mediaIds?: string[];
@@ -25,7 +25,7 @@ export interface MastodonPost {
 }
 
 export interface MastodonInteraction {
-    type: 'favourite' | 'boost' | 'reply';
+    type: "favourite" | "boost" | "reply";
     statusId: string;
     text?: string; // For replies
 }
@@ -33,7 +33,7 @@ export interface MastodonInteraction {
 export interface MastodonStatus {
     id: string;
     content: string;
-    visibility: 'public' | 'unlisted' | 'private' | 'direct';
+    visibility: "public" | "unlisted" | "private" | "direct";
     sensitive: boolean;
     spoilerText: string;
     mediaAttachments: any[];

@@ -9,7 +9,9 @@ export function getConfig(): MastodonConfig {
     }
 
     if (!accessToken) {
-        throw new Error("MASTODON_ACCESS_TOKEN environment variable is not set");
+        throw new Error(
+            "MASTODON_ACCESS_TOKEN environment variable is not set"
+        );
     }
 
     return {

@@ -4,7 +4,8 @@ export class RateLimiter {
     private lastRequest: number = 0;
     private requestInterval: number = 1000; // Default: 1 second between requests
 
-    constructor(requestsPerMinute: number = 30) { // Mastodon's default rate limit
+    constructor(requestsPerMinute: number = 30) {
+        // Mastodon's default rate limit
         this.requestInterval = Math.ceil(60000 / requestsPerMinute);
     }
 
@@ -14,7 +15,7 @@ export class RateLimiter {
 
         if (timeToWait > 0) {
             elizaLogger.debug(`Rate limiter waiting for ${timeToWait}ms`);
-            await new Promise(resolve => setTimeout(resolve, timeToWait));
+            await new Promise((resolve) => setTimeout(resolve, timeToWait));
         }
 
         this.lastRequest = Date.now();
