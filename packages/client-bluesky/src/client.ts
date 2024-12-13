@@ -16,7 +16,7 @@ export class BlueskyClient implements Client {
         });
     }
 
-    async start(runtime?: IAgentRuntime): Promise<void> {
+    async start(runtime?: IAgentRuntime): Promise<unknown> {
         if (runtime) {
             this.runtime = runtime;
         }
@@ -28,10 +28,11 @@ export class BlueskyClient implements Client {
         }
 
         await this.agent.login({ identifier, password });
+        return undefined;
     }
 
-    async stop(_runtime?: IAgentRuntime): Promise<void> {
-        return;
+    async stop(_runtime?: IAgentRuntime): Promise<unknown> {
+        return undefined;
     }
 
     async createMessage(content: Content, roomId: UUID): Promise<Memory> {

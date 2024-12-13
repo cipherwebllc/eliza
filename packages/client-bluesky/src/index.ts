@@ -3,7 +3,7 @@ import { BlueskyClient } from "./client.js";
 import { validateBlueskyConfig } from "./environment.js";
 
 export const BlueskyClientInterface: Client = {
-    async start(runtime?: IAgentRuntime) {
+    async start(runtime?: IAgentRuntime): Promise<unknown> {
         if (!runtime) {
             throw new Error("Runtime is required for Bluesky client");
         }
@@ -14,7 +14,8 @@ export const BlueskyClientInterface: Client = {
         return client;
     },
 
-    async stop(_runtime?: IAgentRuntime) {
+    async stop(_runtime?: IAgentRuntime): Promise<unknown> {
         elizaLogger.log("Bluesky client stopped");
+        return undefined;
     },
 };
