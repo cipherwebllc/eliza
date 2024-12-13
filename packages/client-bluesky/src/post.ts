@@ -1,5 +1,15 @@
 import { BskyAgent } from "@atproto/api";
-import { BlueskyPost } from "./types";
+import { Content } from "@ai16z/eliza";
+
+interface PostReference {
+    uri: string;
+    cid: string;
+}
+
+export interface BlueskyPost {
+    text: string;
+    replyTo?: PostReference;
+}
 
 export async function createPost(
     agent: BskyAgent,
