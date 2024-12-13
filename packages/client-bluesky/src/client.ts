@@ -36,6 +36,14 @@ export class BlueskyClient implements Client {
             text: content.text
         };
 
+        // Handle attachments if present
+        if (content.attachments && content.attachments.length > 0) {
+            // Add attachment info to the post text since Bluesky doesn't support direct file uploads
+            blueskyPost.text += "\n\nAttachments: " + content.attachments
+                .map(media => `[${media.id} - ${media.title} (${media.url})]`)
+                .join(", ");
+        }
+
         const post = await this.agent.post({
             text: blueskyPost.text,
             createdAt: new Date().toISOString(),
@@ -46,7 +54,10 @@ export class BlueskyClient implements Client {
             userId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
             roomId,
             createdAt: Date.now(),
-            content,
+            content: {
+                ...content,
+                action: content.action || undefined,
+            },
             agentId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
         };
     }
@@ -65,6 +76,14 @@ export class BlueskyClient implements Client {
             }
         };
 
+        // Handle attachments if present
+        if (content.attachments && content.attachments.length > 0) {
+            // Add attachment info to the post text since Bluesky doesn't support direct file uploads
+            blueskyPost.text += "\n\nAttachments: " + content.attachments
+                .map(media => `[${media.id} - ${media.title} (${media.url})]`)
+                .join(", ");
+        }
+
         const post = await this.agent.post({
             text: blueskyPost.text,
             reply: {
@@ -82,6 +101,7 @@ export class BlueskyClient implements Client {
             content: {
                 ...content,
                 inReplyTo: replyTo.id,
+                action: content.action || undefined,
             },
             agentId: this.runtime.getSetting("BLUESKY_IDENTIFIER") as UUID,
         };
