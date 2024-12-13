@@ -1,0 +1,26 @@
+{
+    "name": "@ai16z/client-bluesky",
+    "version": "0.1.0",
+    "main": "dist/index.js",
+    "type": "module",
+    "types": "dist/index.d.ts",
+    "dependencies": {
+        "@atproto/api": "^0.3.0",
+        "@atproto/identity": "^0.3.0"
+    },
+    "peerDependencies": {
+        "@ai16z/eliza": "workspace:*"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "eslint": "^8.45.0",
+        "typescript": "^5.0.0",
+        "tsup": "^8.3.5"
+    },
+    "scripts": {
+        "build": "tsup src/index.ts --format esm --dts",
+        "dev": "tsup src/index.ts --format esm --dts --watch",
+        "lint": "eslint . --fix"
+    }
+}
