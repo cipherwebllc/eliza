@@ -19,6 +19,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+      - name: Build packages
+        run: pnpm build
       - name: Run integration tests
         run: |
           timeout 300 pnpm run integrationTests
@@ -36,6 +38,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+      - name: Build packages
+        run: pnpm build
       - name: Run smoke tests
         run: |
           timeout 300 pnpm run smokeTests
