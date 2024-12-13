@@ -16,8 +16,10 @@ export class BlueskyClient implements Client {
         });
     }
 
-    async start(runtime: IAgentRuntime): Promise<void> {
-        this.runtime = runtime;
+    async start(runtime?: IAgentRuntime): Promise<void> {
+        if (runtime) {
+            this.runtime = runtime;
+        }
         const identifier = this.runtime.getSetting("BLUESKY_IDENTIFIER");
         const password = this.runtime.getSetting("BLUESKY_APP_PASSWORD");
 
@@ -28,7 +30,7 @@ export class BlueskyClient implements Client {
         await this.agent.login({ identifier, password });
     }
 
-    async stop(): Promise<void> {
+    async stop(_runtime?: IAgentRuntime): Promise<void> {
         return;
     }
 
