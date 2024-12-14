@@ -7,9 +7,9 @@ export function createFavorite(postId: string): MisskeyInteraction {
   };
 }
 
-export function createRenote(postId: string): MisskeyInteraction {
+export function createBoost(postId: string): MisskeyInteraction {
   return {
-    type: "renote",
+    type: "boost",
     postId,
   };
 }

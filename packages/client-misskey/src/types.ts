@@ -13,7 +13,7 @@ export interface MisskeyPost {
 }
 
 export type MisskeyInteraction = {
-  type: "favorite" | "renote" | "reply";
+  type: "favorite" | "boost" | "reply";
   postId: string;
   content?: string;
 };

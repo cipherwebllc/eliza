@@ -22,7 +22,7 @@ export class MisskeyClientImpl implements Client {
     this.runtime = runtime;
   }
 
-  async stop(runtime: IAgentRuntime): Promise<void> {
+  async stop(): Promise<void> {
     this.runtime = undefined;
   }
 
@@ -44,7 +44,7 @@ export class MisskeyClientImpl implements Client {
           noteId: interaction.postId,
         });
         break;
-      case "renote":
+      case "boost":
         await this.client.request("notes/create", {
           renoteId: interaction.postId,
         });
