@@ -4,25 +4,25 @@ import {
     composeActionExamples,
     formatActionNames,
     formatActions,
-} from "./actions.ts";
-import { addHeader, composeContext } from "./context.ts";
-import { defaultCharacter } from "./defaultCharacter.ts";
+} from "./actions.js";
+import { addHeader, composeContext } from "./context.js";
+import { defaultCharacter } from "./defaultCharacter.js";
 import {
     evaluationTemplate,
     formatEvaluatorExamples,
     formatEvaluatorNames,
     formatEvaluators,
-} from "./evaluators.ts";
-import { generateText } from "./generation.ts";
-import { formatGoalsAsString, getGoals } from "./goals.ts";
-import { elizaLogger } from "./index.ts";
-import knowledge from "./knowledge.ts";
-import { MemoryManager } from "./memory.ts";
-import { formatActors, formatMessages, getActorDetails } from "./messages.ts";
-import { parseJsonArrayFromText } from "./parsing.ts";
-import { formatPosts } from "./posts.ts";
-import { getProviders } from "./providers.ts";
-import settings from "./settings.ts";
+} from "./evaluators.js";
+import { generateText } from "./generation.js";
+import { formatGoalsAsString, getGoals } from "./goals.js";
+import { elizaLogger } from "./index.js";
+import knowledge from "./knowledge.js";
+import { MemoryManager } from "./memory.js";
+import { formatActors, formatMessages, getActorDetails } from "./messages.js";
+import { parseJsonArrayFromText } from "./parsing.js";
+import { formatPosts } from "./posts.js";
+import { getProviders } from "./providers.js";
+import settings from "./settings.js";
 import {
     Character,
     Goal,
@@ -44,8 +44,8 @@ import {
     type Actor,
     type Evaluator,
     type Memory,
-} from "./types.ts";
-import { stringToUuid } from "./uuid.ts";
+} from "./types.js";
+import { stringToUuid } from "./uuid.js";
 
 /**
  * Represents the runtime environment for an agent, handling message processing,

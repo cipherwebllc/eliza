@@ -8,7 +8,7 @@ import {
     type UUID,
     Participant,
     IDatabaseAdapter,
-} from "./types.ts";
+} from "./types.js";
 import { CircuitBreaker } from "./database/CircuitBreaker";
 import { elizaLogger } from "./logger";
 

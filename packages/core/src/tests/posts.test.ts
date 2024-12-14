@@ -1,5 +1,5 @@
-import { formatPosts } from "../posts.ts";
-import { Actor, Memory } from "../types.ts";
+import { formatPosts } from "../posts.js";
+import { Actor, Memory } from "../types.js";
 
 // Mocked data with consistent conversation IDs
 const mockActors: Actor[] = [

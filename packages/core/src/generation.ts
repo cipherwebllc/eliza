@@ -14,16 +14,16 @@ import OpenAI from "openai";
 import { encodingForModel, TiktokenModel } from "js-tiktoken";
 import Together from "together-ai";
 import { ZodSchema } from "zod";
-import { elizaLogger } from "./index.ts";
-import { getModel, models } from "./models.ts";
+import { elizaLogger } from "./index.js";
+import { getModel, models } from "./models.js";
 import {
     parseBooleanFromText,
     parseJsonArrayFromText,
     parseJSONObjectFromText,
     parseShouldRespondFromText,
     parseActionResponseFromText
-} from "./parsing.ts";
-import settings from "./settings.ts";
+} from "./parsing.js";
+import settings from "./settings.js";
 import {
     Content,
     IAgentRuntime,
@@ -34,7 +34,7 @@ import {
     ServiceType,
     SearchResponse,
     ActionResponse
-} from "./types.ts";
+} from "./types.js";
 import { fal } from "@fal-ai/client";
 
 /**
