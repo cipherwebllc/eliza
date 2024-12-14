@@ -5,18 +5,19 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup 'src/**/*.ts' --format esm --dts",
     "lint": "eslint . --fix",
     "format": "prettier --write src"
   },
   "dependencies": {
+    "@ai16z/eliza": "workspace:*",
     "misskey-js": "^0.0.16"
   },
   "peerDependencies": {
     "@ai16z/eliza": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.17.9",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.45.0",

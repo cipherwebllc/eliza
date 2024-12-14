@@ -1,4 +1,4 @@
-import { MisskeyInteraction } from "./types";
+import { MisskeyInteraction } from "./types.js";
 
 export function createFavorite(postId: string): MisskeyInteraction {
   return {

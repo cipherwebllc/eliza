@@ -1,5 +1,5 @@
 import type { mastodon } from "masto";
-import type { MastodonEnvironment } from "./environment";
+import type { MastodonEnvironment } from "./environment.js";
 
 export interface MastodonClientConfig {
   environment: MastodonEnvironment;
@@ -13,7 +13,7 @@ export interface MastodonPost {
 }
 
 export type MastodonInteraction = {
-  type: "favorite" | "boost" | "reply";
+  type: "favourite" | "reblog" | "reply";
   postId: string;
   content?: string;
 };

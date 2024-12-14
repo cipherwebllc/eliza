@@ -1,11 +1,12 @@
-import { createRestAPIClient } from "masto";
-import { Client, Post } from "@ai16z/eliza";
-import { MastodonClientConfig, MastodonInteraction, MastodonPost } from "./types";
-import { RateLimiter } from "./rate-limiter";
+import { createRestAPIClient, type mastodon } from "masto";
+import { Client, Content, IAgentRuntime } from "@ai16z/eliza";
+import { MastodonClientConfig, MastodonInteraction, MastodonPost } from "./types.js";
+import { RateLimiter } from "./rate-limiter.js";
 
 export class MastodonClientImpl implements Client {
-  private client: ReturnType<typeof createRestAPIClient>;
+  private client: mastodon.rest.Client;
   private rateLimiter: RateLimiter;
+  private runtime?: IAgentRuntime;
 
   constructor(config: MastodonClientConfig) {
     this.client = createRestAPIClient({
@@ -15,7 +16,17 @@ export class MastodonClientImpl implements Client {
     this.rateLimiter = new RateLimiter();
   }
 
-  async post(content: Post): Promise<string> {
+  async start(runtime: IAgentRuntime): Promise<unknown> {
+    this.runtime = runtime;
+    return Promise.resolve();
+  }
+
+  async stop(runtime: IAgentRuntime): Promise<unknown> {
+    this.runtime = undefined;
+    return Promise.resolve();
+  }
+
+  async post(content: Content): Promise<string> {
     await this.rateLimiter.waitForToken();
     const post: MastodonPost = {
       status: content.text,
@@ -28,11 +39,11 @@ export class MastodonClientImpl implements Client {
   async interact(interaction: MastodonInteraction): Promise<void> {
     await this.rateLimiter.waitForToken();
     switch (interaction.type) {
-      case "favorite":
-        await this.client.v1.statuses.favourite(interaction.postId);
+      case "favourite":
+        await this.client.v1.statuses.$select(interaction.postId).favourite();
         break;
-      case "boost":
-        await this.client.v1.statuses.reblog(interaction.postId);
+      case "reblog":
+        await this.client.v1.statuses.$select(interaction.postId).reblog();
         break;
       case "reply":
         if (!interaction.content) throw new Error("Reply content is required");
