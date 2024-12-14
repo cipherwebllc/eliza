@@ -1,29 +1,29 @@
-import * as Misskey from "misskey-js";
+import { api } from "misskey-js";
 import { Client, Content, IAgentRuntime } from "@ai16z/eliza";
 import { MisskeyClientConfig, MisskeyInteraction, MisskeyPost } from "./types.js";
 import { RateLimiter } from "./rate-limiter.js";
 
+const MisskeyClient = api.APIClient;
+
 export class MisskeyClientImpl implements Client {
-  private client: Misskey.api.APIClient;
+  private client: InstanceType<typeof MisskeyClient>;
   private rateLimiter: RateLimiter;
   private runtime?: IAgentRuntime;
 
   constructor(config: MisskeyClientConfig) {
-    this.client = new Misskey.api.APIClient({
+    this.client = new MisskeyClient({
       origin: config.environment.MISSKEY_API_URL,
       credential: config.environment.MISSKEY_TOKEN,
     });
     this.rateLimiter = new RateLimiter();
   }
 
-  async start(runtime: IAgentRuntime): Promise<unknown> {
+  async start(runtime: IAgentRuntime): Promise<void> {
     this.runtime = runtime;
-    return Promise.resolve();
   }
 
-  async stop(runtime: IAgentRuntime): Promise<unknown> {
+  async stop(runtime: IAgentRuntime): Promise<void> {
     this.runtime = undefined;
-    return Promise.resolve();
   }
 
   async post(content: Content): Promise<string> {
