@@ -1,7 +1,7 @@
 import { createRestAPIClient } from "masto";
 import { Client, Post } from "@ai16z/eliza";
-import { MastodonClientConfig, MastodonInteraction, MastodonPost } from "./types";
-import { RateLimiter } from "./rate-limiter";
+import { MastodonClientConfig, MastodonInteraction, MastodonPost } from "./types.js";
+import { RateLimiter } from "./rate-limiter.js";
 
 export class MastodonClientImpl implements Client {
   private client: ReturnType<typeof createRestAPIClient>;

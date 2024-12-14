@@ -1,5 +1,5 @@
 import type { mastodon } from "masto";
-import type { MastodonEnvironment } from "./environment";
+import type { MastodonEnvironment } from "./environment.js";
 
 export interface MastodonClientConfig {
   environment: MastodonEnvironment;

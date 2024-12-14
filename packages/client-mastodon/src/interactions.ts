@@ -1,4 +1,4 @@
-import { MastodonInteraction } from "./types";
+import { MastodonInteraction } from "./types.js";
 
 export function createFavorite(postId: string): MastodonInteraction {
   return {
