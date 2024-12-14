@@ -1,12 +1,15 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "types": ["node"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": true
-  },
-  "include": ["src/**/*.ts"]
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "declaration": true,
+        "declarationMap": true,
+        "outDir": "./dist",
+        "rootDir": "./src"
+    },
+    "references": [
+        { "path": "../core" }
+    ],
+    "include": ["src/**/*.ts"]
 }

@@ -5,12 +5,21 @@ export interface MastodonClientConfig {
   environment: MastodonEnvironment;
 }
 
-export interface MastodonPost {
+interface BasePost {
   status: string;
   visibility?: "public" | "unlisted" | "private" | "direct";
   inReplyToId?: string;
-  mediaIds?: string[];
 }
+
+interface MediaPost extends BasePost {
+  mediaIds: string[];
+}
+
+interface TextPost extends BasePost {
+  mediaIds?: never;
+}
+
+export type MastodonPost = TextPost | MediaPost;
 
 export type MastodonInteraction = {
   type: "favourite" | "reblog" | "reply";

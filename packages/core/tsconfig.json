@@ -1,27 +1,27 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-        "module": "ESNext",
+        "module": "NodeNext",
         "lib": [
             "ESNext",
             "dom"
         ],
-        "moduleResolution": "Bundler",
+        "moduleResolution": "NodeNext",
         "outDir": "./dist",
         "rootDir": "./src",
         "strict": false,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": false,
-        "allowImportingTsExtensions": true,
         "declaration": true,
-        "emitDeclarationOnly": true,
+        "declarationMap": true,
         "resolveJsonModule": true,
         "noImplicitAny": false,
         "allowJs": true,
         "checkJs": false,
         "noEmitOnError": false,
         "moduleDetection": "force",
+        "allowImportingTsExtensions": true,
         "allowArbitraryExtensions": true
     },
     "include": [
