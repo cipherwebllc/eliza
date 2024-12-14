@@ -1,4 +1,4 @@
-import { ActionResponse } from "./types.ts";
+import { ActionResponse } from "./types.js";
 const jsonBlockPattern = /```json\n([\s\S]*?)\n```/;
 
 export const messageCompletionFooter = `\nResponse format should be formatted in a JSON block like this:

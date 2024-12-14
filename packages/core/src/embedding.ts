@@ -1,8 +1,8 @@
 import path from "node:path";
-import { models } from "./models.ts";
-import { IAgentRuntime, ModelProviderName } from "./types.ts";
-import settings from "./settings.ts";
-import elizaLogger from "./logger.ts";
+import { models } from "./models.js";
+import { IAgentRuntime, ModelProviderName } from "./types.js";
+import settings from "./settings.js";
+import elizaLogger from "./logger.js";
 
 interface EmbeddingOptions {
     model: string;
