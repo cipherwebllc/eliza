@@ -1,8 +1,8 @@
-import { z } from "zod";
+import * as zod from "zod";
 
-export const MisskeyEnvironmentSchema = z.object({
-  MISSKEY_TOKEN: z.string(),
-  MISSKEY_API_URL: z.string().url(),
+export const MisskeyEnvironmentSchema = zod.object({
+  MISSKEY_TOKEN: zod.string(),
+  MISSKEY_API_URL: zod.string().url(),
 });
 
-export type MisskeyEnvironment = z.infer<typeof MisskeyEnvironmentSchema>;
+export type MisskeyEnvironment = zod.infer<typeof MisskeyEnvironmentSchema>;

@@ -627,11 +627,11 @@ importers:
         specifier: workspace:*
         version: link:../core
       masto:
-        specifier: ^6.5.2
+        specifier: ^6.10.1
         version: 6.10.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/node':
-        specifier: ^20.0.0
+        specifier: ^20.17.9
         version: 20.17.9
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.0.0
@@ -662,7 +662,7 @@ importers:
         version: 0.0.16(@swc/helpers@0.5.15)(chokidar@3.6.0)
     devDependencies:
       '@types/node':
-        specifier: ^20.0.0
+        specifier: ^20.17.9
         version: 20.17.9
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.0.0
