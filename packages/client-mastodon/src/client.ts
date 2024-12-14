@@ -1,11 +1,12 @@
+import { Client, IAgentRuntime, Content } from "@ai16z/eliza";
 import { createRestAPIClient } from "masto";
-import { Client, Post } from "@ai16z/eliza";
-import { MastodonClientConfig, MastodonInteraction, MastodonPost } from "./types.js";
+import { MastodonClientConfig, MastodonInteraction } from "./types.js";
 import { RateLimiter } from "./rate-limiter.js";
 
 export class MastodonClientImpl implements Client {
-  private client: ReturnType<typeof createRestAPIClient>;
-  private rateLimiter: RateLimiter;
+  private client;
+  private rateLimiter;
+  private runtime?: IAgentRuntime;
 
   constructor(config: MastodonClientConfig) {
     this.client = createRestAPIClient({
@@ -15,24 +16,32 @@ export class MastodonClientImpl implements Client {
     this.rateLimiter = new RateLimiter();
   }
 
-  async post(content: Post): Promise<string> {
+  async start(runtime: IAgentRuntime): Promise<void> {
+    this.runtime = runtime;
+  }
+
+  async stop(): Promise<void> {
+    this.runtime = undefined;
+  }
+
+  async post(content: Content): Promise<string> {
     await this.rateLimiter.waitForToken();
-    const post: MastodonPost = {
+    const post = await this.client.v1.statuses.create({
       status: content.text,
-      visibility: "public",
-    };
-    const response = await this.client.v1.statuses.create(post);
-    return response.id;
+    });
+    return post.id;
   }
 
   async interact(interaction: MastodonInteraction): Promise<void> {
     await this.rateLimiter.waitForToken();
+    const status = await this.client.v1.statuses.$select(interaction.postId);
+
     switch (interaction.type) {
       case "favorite":
-        await this.client.v1.statuses.favourite(interaction.postId);
+        await status.favourite();
         break;
       case "boost":
-        await this.client.v1.statuses.reblog(interaction.postId);
+        await status.reblog();
         break;
       case "reply":
         if (!interaction.content) throw new Error("Reply content is required");
