@@ -3,7 +3,19 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: ["src/index.ts"],
   format: ["esm"],
-  dts: true,
+  dts: {
+    entry: {
+      index: "src/index.ts"
+    },
+    compilerOptions: {
+      moduleResolution: "node16",
+      paths: {
+        "@ai16z/*": ["../../packages/*/src"]
+      },
+      declaration: true,
+      emitDeclarationOnly: true
+    }
+  },
   sourcemap: true,
   clean: true,
   target: "es2020",
