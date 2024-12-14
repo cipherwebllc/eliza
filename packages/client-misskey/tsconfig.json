@@ -1,12 +1,15 @@
 {
+    "extends": "../../tsconfig.json",
     "compilerOptions": {
         "target": "ESNext",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
+        "outDir": "./dist",
+        "rootDir": "./src",
         "declaration": true,
         "declarationMap": true,
-        "outDir": "./dist",
-        "rootDir": "./src"
+        "allowImportingTsExtensions": true,
+        "noEmit": false
     },
     "references": [
         { "path": "../core" }
