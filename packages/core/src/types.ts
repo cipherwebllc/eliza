@@ -247,16 +247,16 @@ export interface State {
     agentId?: UUID;
 
     /** Agent's biography */
-    bio: string;
+    bio?: string;
 
     /** Agent's background lore */
-    lore: string;
+    lore?: string;
 
     /** Message handling directions */
-    messageDirections: string;
+    messageDirections?: string;
 
     /** Post handling directions */
-    postDirections: string;
+    postDirections?: string;
 
     /** Current room/conversation ID */
     roomId: UUID;
@@ -704,7 +704,7 @@ export type Character = {
         chains?: {
             evm?: any[];
             solana?: any[];
-            [key: string]: any[];
+            [key: string]: any[] | undefined;
         };
     };
 
@@ -1169,8 +1169,10 @@ export enum LoggingLevel {
     NONE = "none",
 }
 
-export type KnowledgeItem = {
+export interface KnowledgeItem {
+    /** Unique identifier for the knowledge item */
     id: UUID;
+    /** Content of the knowledge item */
     content: Content;
 };
 

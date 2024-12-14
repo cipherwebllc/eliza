@@ -9,7 +9,15 @@
         },
         "build": {
             "outputs": ["dist/**"],
-            "dependsOn": ["^@ai16z/eliza#build"]
+            "dependsOn": ["^build"]
+        },
+        "@ai16z/client-mastodon#build": {
+            "outputs": ["dist/**"],
+            "dependsOn": ["@ai16z/eliza#build"]
+        },
+        "@ai16z/client-misskey#build": {
+            "outputs": ["dist/**"],
+            "dependsOn": ["@ai16z/eliza#build"]
         },
         "@ai16z/plugin-solana#build": {
             "outputs": ["dist/**"],

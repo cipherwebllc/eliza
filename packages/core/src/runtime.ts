@@ -32,6 +32,7 @@ import {
     IDatabaseAdapter,
     IMemoryManager,
     KnowledgeItem,
+    Media,
     ModelClass,
     ModelProviderName,
     Plugin,
@@ -96,12 +97,12 @@ export class AgentRuntime implements IAgentRuntime {
     /**
      * The model to use for generateText.
      */
-    modelProvider: ModelProviderName;
+    modelProvider: ModelProviderName = ModelProviderName.OPENAI;
 
     /**
      * The model to use for generateImage.
      */
-    imageModelProvider: ModelProviderName;
+    imageModelProvider: ModelProviderName = ModelProviderName.OPENAI;
 
     /**
      * Fetch function to use
@@ -375,7 +376,8 @@ export class AgentRuntime implements IAgentRuntime {
     async initialize() {
         for (const [serviceType, service] of this.services.entries()) {
             try {
-                await service.initialize(this);
+                const runtime: IAgentRuntime = this;
+                await service.initialize(runtime);
                 this.services.set(serviceType, service);
                 elizaLogger.success(
                     `Service ${serviceType} initialized successfully`
@@ -436,21 +438,18 @@ export class AgentRuntime implements IAgentRuntime {
         }
     }
 
-    getSetting(key: string) {
-        // check if the key is in the character.settings.secrets object
+    getSetting(key: string): string | null {
+        // first check if it's in the secrets object
         if (this.character.settings?.secrets?.[key]) {
             return this.character.settings.secrets[key];
         }
         // if not, check if it's in the settings object
-        if (this.character.settings?.[key]) {
-            return this.character.settings[key];
-        }
-
-        // if not, check if it's in the settings object
-        if (settings[key]) {
+        const settings = this.character.settings as Record<string, any>;
+        if (settings?.[key]) {
             return settings[key];
         }
 
+        // if not found, return null to match interface
         return null;
     }
 
@@ -572,7 +571,7 @@ export class AgentRuntime implements IAgentRuntime {
      * Evaluate the message and state using the registered evaluators.
      * @param message The message to evaluate.
      * @param state The state of the agent.
-     * @param didRespond Whether the agent responded to the message.~
+     * @param didRespond Whether the agent responded to the message.
      * @param callback The handler callback
      * @returns The results of the evaluation.
      */
@@ -600,19 +599,26 @@ export class AgentRuntime implements IAgentRuntime {
         );
 
         const resolvedEvaluators = await Promise.all(evaluatorPromises);
-        const evaluatorsData = resolvedEvaluators.filter(Boolean);
+        const evaluatorsData = resolvedEvaluators.filter((e): e is Evaluator => e !== null);
 
         // if there are no evaluators this frame, return
         if (evaluatorsData.length === 0) {
             return [];
         }
 
+        // Create a new state object with all required fields
+        const evaluationState: State = {
+            ...(state || {}),
+            roomId: state?.roomId || message.roomId || this.agentId,
+            actors: state?.actors || "",  // Required field
+            recentMessages: state?.recentMessages || "",  // Required field
+            recentMessagesData: state?.recentMessagesData || [],  // Required field
+            evaluators: formatEvaluators(evaluatorsData),
+            evaluatorNames: formatEvaluatorNames(evaluatorsData),
+        };
+
         const context = composeContext({
-            state: {
-                ...state,
-                evaluators: formatEvaluators(evaluatorsData),
-                evaluatorNames: formatEvaluatorNames(evaluatorsData),
-            },
+            state: evaluationState,
             template:
                 this.character.templates?.evaluationTemplate ||
                 evaluationTemplate,
@@ -808,25 +814,20 @@ export class AgentRuntime implements IAgentRuntime {
             );
 
             if (lastMessageWithAttachment) {
-                const lastMessageTime = lastMessageWithAttachment.createdAt;
+                const lastMessageTime = lastMessageWithAttachment.createdAt ?? Date.now();
                 const oneHourBeforeLastMessage =
                     lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
 
                 allAttachments = recentMessagesData
                     .reverse()
-                    .map((msg) => {
+                    .filter((msg) => {
                         const msgTime = msg.createdAt ?? Date.now();
                         const isWithinTime =
                             msgTime >= oneHourBeforeLastMessage;
-                        const attachments = msg.content.attachments || [];
-                        if (!isWithinTime) {
-                            attachments.forEach((attachment) => {
-                                attachment.text = "[Hidden]";
-                            });
-                        }
-                        return attachments;
+                        return isWithinTime && msg.content.attachments && msg.content.attachments.length > 0;
                     })
-                    .flat();
+                    .map((msg) => msg.content.attachments)
+                    .flat() as Media[];
             }
         }
 
@@ -905,7 +906,7 @@ Text: ${attachment.text}
                 });
 
             // Sort messages by timestamp in descending order
-            existingMemories.sort((a, b) => b.createdAt - a.createdAt);
+            existingMemories.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
             // Take the most recent messages
             const recentInteractionsData = existingMemories.slice(0, 20);
@@ -1121,7 +1122,8 @@ Text: ${attachment.text}
         } as State;
 
         const actionPromises = this.actions.map(async (action: Action) => {
-            const result = await action.validate(this, message, initialState);
+            const runtime: IAgentRuntime = this;
+            const result = await action.validate(runtime, message, initialState);
             if (result) {
                 return action;
             }
@@ -1129,8 +1131,9 @@ Text: ${attachment.text}
         });
 
         const evaluatorPromises = this.evaluators.map(async (evaluator) => {
+            const runtime: IAgentRuntime = this;
             const result = await evaluator.validate(
-                this,
+                runtime,
                 message,
                 initialState
             );
@@ -1144,7 +1147,7 @@ Text: ${attachment.text}
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                getProviders(this, message, initialState),
+                getProviders(this as IAgentRuntime, message, initialState),
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
@@ -1208,7 +1211,7 @@ Text: ${attachment.text}
             }),
         });
 
-        let allAttachments = [];
+        let allAttachments: Media[] = [];
 
         if (recentMessagesData && Array.isArray(recentMessagesData)) {
             const lastMessageWithAttachment = recentMessagesData.find(
@@ -1217,7 +1220,7 @@ Text: ${attachment.text}
                     msg.content.attachments.length > 0
             );
 
-            if (lastMessageWithAttachment) {
+            if (lastMessageWithAttachment && lastMessageWithAttachment.createdAt) {
                 const lastMessageTime = lastMessageWithAttachment.createdAt;
                 const oneHourBeforeLastMessage =
                     lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
@@ -1225,7 +1228,7 @@ Text: ${attachment.text}
                 allAttachments = recentMessagesData
                     .filter((msg) => {
                         const msgTime = msg.createdAt;
-                        return msgTime >= oneHourBeforeLastMessage;
+                        return msgTime !== undefined && msgTime >= oneHourBeforeLastMessage;
                     })
                     .flatMap((msg) => msg.content.attachments || []);
             }

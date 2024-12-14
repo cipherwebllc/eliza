@@ -81,7 +81,7 @@ export const formatMessages = ({
                     ? ` (Attachments: ${attachments.map((media) => `[${media.id} - ${media.title} (${media.url})]`).join(", ")})`
                     : "";
 
-            const timestamp = formatTimestamp(message.createdAt);
+            const timestamp = formatTimestamp(message.createdAt ?? Date.now());
 
             const shortId = message.userId.slice(-5);
 

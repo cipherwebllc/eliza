@@ -5,6 +5,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
     clean: true,
+    dts: true, // Enable TypeScript declaration file generation
     format: ["esm"], // Ensure you're targeting CommonJS
     external: [
         "dotenv", // Externalize dotenv to prevent bundling

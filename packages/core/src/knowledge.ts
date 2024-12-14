@@ -60,8 +60,15 @@ async function get(
     );
 
     return knowledgeDocuments
-        .filter((memory) => memory !== null)
-        .map((memory) => ({ id: memory.id, content: memory.content }));
+        .filter((memory): memory is NonNullable<typeof memory> =>
+            memory !== null &&
+            typeof memory.id === 'string' &&
+            memory.id.length > 0
+        )
+        .map((memory) => ({
+            id: memory.id as UUID,  // Type assertion since we validated it's a non-empty string
+            content: memory.content
+        }));
 }
 
 async function set(

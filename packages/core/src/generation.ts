@@ -4,9 +4,10 @@ import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import {
-    generateObject as aiGenerateObject,
+    generateObject,
     generateText as aiGenerateText,
     GenerateObjectResult,
+    CoreMessage,
 } from "ai";
 import { Buffer } from "buffer";
 import { createOllama } from "ollama-ai-provider";
@@ -36,6 +37,12 @@ import {
     ActionResponse
 } from "./types.js";
 import { fal } from "@fal-ai/client";
+
+// Define model types that aren't exported from SDKs
+type AnthropicMessagesModelId = 'claude-3-opus-20240229' | 'claude-3-sonnet-20240229' | 'claude-2.1' | 'claude-2.0' | 'claude-instant-1.2';
+type GoogleGenerativeAIModelId = 'gemini-pro' | 'gemini-pro-vision';
+type GroqChatModelId = 'mixtral-8x7b-32768' | 'llama2-70b-4096';
+type OllamaChatModelId = string;
 
 /**
  * Send a message to the model for a text generateText - receive a string back and parse how you'd like
@@ -76,7 +83,7 @@ export async function generateText({
     const provider = runtime.modelProvider;
     const endpoint =
         runtime.character.modelEndpointOverride || models[provider].endpoint;
-    let model = models[provider].model[modelClass];
+    let model = models[provider].model[modelClass as keyof typeof models[typeof provider]['model']];
 
     // allow character.json settings => secrets to override models
     // FIXME: add MODEL_MEDIUM support
@@ -179,22 +186,19 @@ export async function generateText({
             case ModelProviderName.TOGETHER: {
                 elizaLogger.debug("Initializing OpenAI model.");
                 const openai = createOpenAI({
-                    apiKey,
-                    baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: endpoint ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: openaiResponse } = await aiGenerateText({
-                    model: openai.languageModel(model),
+                    model: openai.languageModel(model as string),
                     prompt: context,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = openaiResponse;
@@ -204,20 +208,20 @@ export async function generateText({
 
             case ModelProviderName.GOOGLE: {
                 const google = createGoogleGenerativeAI({
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: googleResponse } = await aiGenerateText({
-                    model: google(model),
+                    model: google(model as GoogleGenerativeAIModelId),
                     prompt: context,
                     system:
                         runtime.character.system ??
                         settings.SYSTEM_PROMPT ??
                         undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = googleResponse;
@@ -229,21 +233,21 @@ export async function generateText({
                 elizaLogger.debug("Initializing Anthropic model.");
 
                 const anthropic = createAnthropic({
-                    apiKey,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: anthropicResponse } = await aiGenerateText({
-                    model: anthropic.languageModel(model),
+                    model: anthropic.languageModel(model as AnthropicMessagesModelId),
                     prompt: context,
                     system:
                         runtime.character.system ??
                         settings.SYSTEM_PROMPT ??
                         undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = anthropicResponse;
@@ -255,21 +259,21 @@ export async function generateText({
                 elizaLogger.debug("Initializing Claude Vertex model.");
 
                 const anthropic = createAnthropic({
-                    apiKey,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: anthropicResponse } = await aiGenerateText({
-                    model: anthropic.languageModel(model),
+                    model: anthropic.languageModel(model as AnthropicMessagesModelId),
                     prompt: context,
                     system:
                         runtime.character.system ??
                         settings.SYSTEM_PROMPT ??
                         undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = anthropicResponse;
@@ -282,13 +286,13 @@ export async function generateText({
             case ModelProviderName.GROK: {
                 elizaLogger.debug("Initializing Grok model.");
                 const grok = createOpenAI({
-                    apiKey,
-                    baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: endpoint ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: grokResponse } = await aiGenerateText({
-                    model: grok.languageModel(model, {
+                    model: grok.languageModel(model as string, {
                         parallelToolCalls: false,
                     }),
                     prompt: context,
@@ -296,10 +300,10 @@ export async function generateText({
                         runtime.character.system ??
                         settings.SYSTEM_PROMPT ??
                         undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = grokResponse;
@@ -308,22 +312,23 @@ export async function generateText({
             }
 
             case ModelProviderName.GROQ: {
-                const groq = createGroq({ apiKey, fetch: runtime.fetch });
+                const groq = createGroq({
+                    apiKey: apiKey ?? '',
+                    fetch: runtime.fetch ?? undefined
+                });
 
                 const { text: groqResponse } = await aiGenerateText({
-                    model: groq.languageModel(model),
+                    model: groq.languageModel(model as GroqChatModelId),
                     prompt: context,
-                    temperature: temperature,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = groqResponse;
+                elizaLogger.debug("Received response from Groq model.");
                 break;
             }
 
@@ -342,11 +347,11 @@ export async function generateText({
 
                 response = await textGenerationService.queueTextCompletion(
                     context,
-                    temperature,
+                    temperature ?? 0.7,
                     _stop,
-                    frequency_penalty,
-                    presence_penalty,
-                    max_response_length
+                    frequency_penalty ?? 0,
+                    presence_penalty ?? 0,
+                    max_response_length ?? 1000
                 );
                 elizaLogger.debug("Received response from local Llama model.");
                 break;
@@ -356,22 +361,19 @@ export async function generateText({
                 elizaLogger.debug("Initializing RedPill model.");
                 const serverUrl = models[provider].endpoint;
                 const openai = createOpenAI({
-                    apiKey,
-                    baseURL: serverUrl,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: serverUrl ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: redpillResponse } = await aiGenerateText({
-                    model: openai.languageModel(model),
+                    model: openai.languageModel(model as string),
                     prompt: context,
-                    temperature: temperature,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = redpillResponse;
@@ -383,22 +385,19 @@ export async function generateText({
                 elizaLogger.debug("Initializing OpenRouter model.");
                 const serverUrl = models[provider].endpoint;
                 const openrouter = createOpenAI({
-                    apiKey,
-                    baseURL: serverUrl,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: serverUrl ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: openrouterResponse } = await aiGenerateText({
-                    model: openrouter.languageModel(model),
+                    model: openrouter.languageModel(model as string),
                     prompt: context,
-                    temperature: temperature,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = openrouterResponse;
@@ -412,19 +411,20 @@ export async function generateText({
 
                     const ollamaProvider = createOllama({
                         baseURL: models[provider].endpoint + "/api",
-                        fetch: runtime.fetch,
+                        fetch: runtime.fetch ?? undefined,
                     });
-                    const ollama = ollamaProvider(model);
+                    const ollama = ollamaProvider(model as OllamaChatModelId);
 
                     elizaLogger.debug("****** MODEL\n", model);
 
                     const { text: ollamaResponse } = await aiGenerateText({
                         model: ollama,
                         prompt: context,
-                        temperature: temperature,
-                        maxTokens: max_response_length,
-                        frequencyPenalty: frequency_penalty,
-                        presencePenalty: presence_penalty,
+                        system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                        temperature: temperature ?? 0.7,
+                        maxTokens: max_response_length ?? 1000,
+                        frequencyPenalty: frequency_penalty ?? 0,
+                        presencePenalty: presence_penalty ?? 0,
                     });
 
                     response = ollamaResponse;
@@ -435,22 +435,19 @@ export async function generateText({
             case ModelProviderName.HEURIST: {
                 elizaLogger.debug("Initializing Heurist model.");
                 const heurist = createOpenAI({
-                    apiKey: apiKey,
-                    baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: endpoint ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: heuristResponse } = await aiGenerateText({
-                    model: heurist.languageModel(model),
+                    model: heurist.languageModel(model as string),
                     prompt: context,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = heuristResponse;
@@ -484,22 +481,19 @@ export async function generateText({
                 elizaLogger.debug("Using GAIANET model with baseURL:", baseURL);
 
                 const openai = createOpenAI({
-                    apiKey,
-                    baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: endpoint ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: openaiResponse } = await aiGenerateText({
-                    model: openai.languageModel(model),
+                    model: openai.languageModel(model as string),
                     prompt: context,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = openaiResponse;
@@ -510,22 +504,19 @@ export async function generateText({
             case ModelProviderName.GALADRIEL: {
                 elizaLogger.debug("Initializing Galadriel model.");
                 const galadriel = createOpenAI({
-                    apiKey: apiKey,
-                    baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    apiKey: apiKey ?? '',
+                    baseURL: endpoint ?? '',
+                    fetch: runtime.fetch ?? undefined,
                 });
 
                 const { text: galadrielResponse } = await aiGenerateText({
-                    model: galadriel.languageModel(model),
+                    model: galadriel.languageModel(model as string),
                     prompt: context,
-                    system:
-                        runtime.character.system ??
-                        settings.SYSTEM_PROMPT ??
-                        undefined,
-                    temperature: temperature,
-                    maxTokens: max_response_length,
-                    frequencyPenalty: frequency_penalty,
-                    presencePenalty: presence_penalty,
+                    system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined,
+                    temperature: temperature ?? 0.7,
+                    maxTokens: max_response_length ?? 1000,
+                    frequencyPenalty: frequency_penalty ?? 0,
+                    presencePenalty: presence_penalty ?? 0,
                 });
 
                 response = galadrielResponse;
@@ -1057,7 +1048,7 @@ export const generateImage = async (
             };
 
             // Subscribe to the model
-            const result = await fal.subscribe(model, {
+            const result = await fal.subscribe(model as string, {
                 input,
                 logs: true,
                 onQueueUpdate: (update) => {
@@ -1068,7 +1059,7 @@ export const generateImage = async (
             });
 
             // Convert the returned image URLs to base64 to match existing functionality
-            const base64Promises = result.data.images.map(async (image) => {
+            const base64Promises = result.data.images.map(async (image: { url: string; content_type: string }) => {
                 const response = await fetch(image.url);
                 const blob = await response.blob();
                 const buffer = await blob.arrayBuffer();
@@ -1157,15 +1148,16 @@ export const generateWebSearch = async (
         });
 
         if (!response.ok) {
-            throw new elizaLogger.error(
-                `HTTP error! status: ${response.status}`
-            );
+            const error = new Error(`HTTP error! status: ${response.status}`);
+            elizaLogger.error(error);
+            throw error;
         }
 
         const data: SearchResponse = await response.json();
         return data;
     } catch (error) {
         elizaLogger.error("Error:", error);
+        throw error; // Re-throw to maintain Promise<SearchResponse> return type
     }
 };
 /**
@@ -1179,7 +1171,7 @@ export interface GenerationOptions {
     schemaName?: string;
     schemaDescription?: string;
     stop?: string[];
-    mode?: "auto" | "json" | "tool";
+    mode?: "json";  // Must be 'json' or undefined when using no-schema output
     experimental_providerMetadata?: Record<string, unknown>;
 }
 
@@ -1210,7 +1202,7 @@ export const generateObjectV2 = async ({
     schemaName,
     schemaDescription,
     stop,
-    mode = "json",
+    mode = 'json', // Default to 'json' for no-schema output
 }: GenerationOptions): Promise<GenerateObjectResult<unknown>> => {
     if (!context) {
         const errorMessage = "generateObjectV2 context is empty";
@@ -1223,12 +1215,12 @@ export const generateObjectV2 = async ({
     if (!model) {
         throw new Error(`Unsupported model class: ${modelClass}`);
     }
-    const temperature = models[provider].settings.temperature;
-    const frequency_penalty = models[provider].settings.frequency_penalty;
-    const presence_penalty = models[provider].settings.presence_penalty;
+    const temperature = models[provider].settings.temperature ?? 0.7;
+    const frequency_penalty = models[provider].settings.frequency_penalty ?? 0;
+    const presence_penalty = models[provider].settings.presence_penalty ?? 0;
     const max_context_length = models[provider].settings.maxInputTokens;
     const max_response_length = models[provider].settings.maxOutputTokens;
-    const apiKey = runtime.token;
+    const apiKey = runtime.token ?? '';
 
     try {
         context = trimTokens(context, max_context_length, model);
@@ -1274,18 +1266,21 @@ interface ProviderOptions {
     schema?: ZodSchema;
     schemaName?: string;
     schemaDescription?: string;
-    mode?: "auto" | "json" | "tool";
+    mode?: "json";  // Changed from "auto" | "json" | "tool" to just "json"
     experimental_providerMetadata?: Record<string, unknown>;
     modelOptions: ModelSettings;
     modelClass: string;
     context: string;
+    prompt?: string;
+    messages?: Array<CoreMessage>;
+    system?: string;
 }
 
 /**
  * Handles AI generation based on the specified provider.
  *
  * @param {ProviderOptions} options - Configuration options specific to the provider.
- * @returns {Promise<any[]>} - A promise that resolves to an array of generated objects.
+ * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to a generated object result.
  */
 export async function handleProvider(
     options: ProviderOptions
@@ -1293,33 +1288,17 @@ export async function handleProvider(
     const { provider, runtime, context, modelClass } = options;
     switch (provider) {
         case ModelProviderName.OPENAI:
-        case ModelProviderName.ETERNALAI:
-        case ModelProviderName.ALI_BAILIAN:
-        case ModelProviderName.VOLENGINE:
-        case ModelProviderName.LLAMACLOUD:
-        case ModelProviderName.TOGETHER:
-        case ModelProviderName.NANOGPT:
             return await handleOpenAI(options);
         case ModelProviderName.ANTHROPIC:
             return await handleAnthropic(options);
-        case ModelProviderName.GROK:
-            return await handleGrok(options);
-        case ModelProviderName.GROQ:
-            return await handleGroq(options);
+        case ModelProviderName.OLLAMA:
+            return await handleOllama(options);
         case ModelProviderName.LLAMALOCAL:
             return await generateObjectDEPRECATED({
                 runtime,
                 context,
                 modelClass,
             });
-        case ModelProviderName.GOOGLE:
-            return await handleGoogle(options);
-        case ModelProviderName.REDPILL:
-            return await handleRedPill(options);
-        case ModelProviderName.OPENROUTER:
-            return await handleOpenRouter(options);
-        case ModelProviderName.OLLAMA:
-            return await handleOllama(options);
         default: {
             const errorMessage = `Unsupported provider: ${provider}`;
             elizaLogger.error(errorMessage);
@@ -1327,219 +1306,84 @@ export async function handleProvider(
         }
     }
 }
-/**
- * Handles object generation for OpenAI.
- *
- * @param {ProviderOptions} options - Options specific to OpenAI.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
+
 async function handleOpenAI({
     model,
     apiKey,
     schema,
     schemaName,
     schemaDescription,
-    mode,
     modelOptions,
+    prompt,
+    messages,
 }: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
     const baseURL = models.openai.endpoint || undefined;
     const openai = createOpenAI({ apiKey, baseURL });
-    return await aiGenerateObject({
-        model: openai.languageModel(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
+    const result = await generateObject({
+        model: openai.languageModel(model as string),
+        messages,
+        prompt,
+        output: 'no-schema' as const,
+        mode: 'json' as 'json', // Must be explicitly 'json' when output is 'no-schema'
+        temperature: modelOptions.temperature,
+        maxTokens: modelOptions.maxTokens,
+        frequencyPenalty: modelOptions.frequencyPenalty,
+        presencePenalty: modelOptions.presencePenalty,
     });
+    return result;
 }
 
-/**
- * Handles object generation for Anthropic models.
- *
- * @param {ProviderOptions} options - Options specific to Anthropic.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
 async function handleAnthropic({
     model,
     apiKey,
     schema,
     schemaName,
     schemaDescription,
-    mode,
     modelOptions,
+    prompt,
+    messages,
 }: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
     const anthropic = createAnthropic({ apiKey });
-    return await aiGenerateObject({
-        model: anthropic.languageModel(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
+    const result = await generateObject({
+        model: anthropic.languageModel(model as string),
+        messages,
+        prompt,
+        output: 'no-schema' as const,
+        mode: 'json' as 'json', // Must be explicitly 'json' when output is 'no-schema'
+        temperature: modelOptions.temperature,
+        maxTokens: modelOptions.maxTokens,
+        frequencyPenalty: modelOptions.frequencyPenalty,
+        presencePenalty: modelOptions.presencePenalty,
     });
+    return result;
 }
 
-/**
- * Handles object generation for Grok models.
- *
- * @param {ProviderOptions} options - Options specific to Grok.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
-async function handleGrok({
-    model,
-    apiKey,
-    schema,
-    schemaName,
-    schemaDescription,
-    mode,
-    modelOptions,
-}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
-    const grok = createOpenAI({ apiKey, baseURL: models.grok.endpoint });
-    return await aiGenerateObject({
-        model: grok.languageModel(model, { parallelToolCalls: false }),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
-    });
-}
-
-/**
- * Handles object generation for Groq models.
- *
- * @param {ProviderOptions} options - Options specific to Groq.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
-async function handleGroq({
-    model,
-    apiKey,
-    schema,
-    schemaName,
-    schemaDescription,
-    mode,
-    modelOptions,
-}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
-    const groq = createGroq({ apiKey });
-    return await aiGenerateObject({
-        model: groq.languageModel(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
-    });
-}
-
-/**
- * Handles object generation for Google models.
- *
- * @param {ProviderOptions} options - Options specific to Google.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
-async function handleGoogle({
-    model,
-    apiKey: _apiKey,
-    schema,
-    schemaName,
-    schemaDescription,
-    mode,
-    modelOptions,
-}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
-    const google = createGoogleGenerativeAI();
-    return await aiGenerateObject({
-        model: google(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
-    });
-}
-
-/**
- * Handles object generation for Redpill models.
- *
- * @param {ProviderOptions} options - Options specific to Redpill.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
-async function handleRedPill({
-    model,
-    apiKey,
-    schema,
-    schemaName,
-    schemaDescription,
-    mode,
-    modelOptions,
-}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
-    const redPill = createOpenAI({ apiKey, baseURL: models.redpill.endpoint });
-    return await aiGenerateObject({
-        model: redPill.languageModel(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
-    });
-}
-
-/**
- * Handles object generation for OpenRouter models.
- *
- * @param {ProviderOptions} options - Options specific to OpenRouter.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
-async function handleOpenRouter({
-    model,
-    apiKey,
-    schema,
-    schemaName,
-    schemaDescription,
-    mode,
-    modelOptions,
-}: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
-    const openRouter = createOpenAI({
-        apiKey,
-        baseURL: models.openrouter.endpoint,
-    });
-    return await aiGenerateObject({
-        model: openRouter.languageModel(model),
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
-    });
-}
-
-/**
- * Handles object generation for Ollama models.
- *
- * @param {ProviderOptions} options - Options specific to Ollama.
- * @returns {Promise<GenerateObjectResult<unknown>>} - A promise that resolves to generated objects.
- */
 async function handleOllama({
     model,
+    provider,
     schema,
     schemaName,
     schemaDescription,
-    mode,
     modelOptions,
-    provider,
+    prompt,
+    messages,
 }: ProviderOptions): Promise<GenerateObjectResult<unknown>> {
     const ollamaProvider = createOllama({
         baseURL: models[provider].endpoint + "/api",
     });
     const ollama = ollamaProvider(model);
-    return await aiGenerateObject({
+    const result = await generateObject({
         model: ollama,
-        schema,
-        schemaName,
-        schemaDescription,
-        mode,
-        ...modelOptions,
+        messages,
+        prompt,
+        output: 'no-schema' as const,
+        mode: 'json' as 'json', // Must be explicitly 'json' when output is 'no-schema'
+        temperature: modelOptions.temperature,
+        maxTokens: modelOptions.maxTokens,
+        frequencyPenalty: modelOptions.frequencyPenalty,
+        presencePenalty: modelOptions.presencePenalty,
     });
+    return result;
 }
 
 // Add type definition for Together AI response

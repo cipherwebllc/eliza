@@ -1,4 +1,4 @@
-import { getProviders } from "../providers";
+import { getProviders } from "../providers.js";
 import {
     IAgentRuntime,
     type Memory,

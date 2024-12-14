@@ -172,6 +172,11 @@ export class MemoryManager implements IMemoryManager {
     async createMemory(memory: Memory, unique = false): Promise<void> {
         // TODO: check memory.agentId == this.runtime.agentId
 
+        if (!memory.id) {
+            elizaLogger.error("Memory ID is undefined");
+            return;
+        }
+
         const existingMessage =
             await this.runtime.databaseAdapter.getMemoryById(memory.id);
 

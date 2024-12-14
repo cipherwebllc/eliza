@@ -23,14 +23,22 @@ export const formatPosts = ({
 
     // Sort messages within each roomId by createdAt (oldest to newest)
     Object.values(groupedMessages).forEach((roomMessages) => {
-        roomMessages.sort((a, b) => a.createdAt - b.createdAt);
+        roomMessages.sort((a, b) => {
+            const aTime = a.createdAt ?? 0;
+            const bTime = b.createdAt ?? 0;
+            return aTime - bTime;
+        });
     });
 
     // Sort rooms by the newest message's createdAt
     const sortedRooms = Object.entries(groupedMessages).sort(
-        ([, messagesA], [, messagesB]) =>
-            messagesB[messagesB.length - 1].createdAt -
-            messagesA[messagesA.length - 1].createdAt
+        ([, messagesA], [, messagesB]) => {
+            const lastA = messagesA[messagesA.length - 1];
+            const lastB = messagesB[messagesB.length - 1];
+            const aTime = lastA?.createdAt ?? 0;
+            const bTime = lastB?.createdAt ?? 0;
+            return bTime - aTime;
+        }
     );
 
     const formattedPosts = sortedRooms.map(([roomId, roomMessages]) => {
@@ -45,7 +53,7 @@ export const formatPosts = ({
 
                 return `Name: ${userName} (@${displayName})
 ID: ${message.id}${message.content.inReplyTo ? `\nIn reply to: ${message.content.inReplyTo}` : ""}
-Date: ${formatTimestamp(message.createdAt)}
+Date: ${formatTimestamp(message.createdAt ?? 0)}
 Text:
 ${message.content.text}`;
             });

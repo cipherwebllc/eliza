@@ -183,9 +183,9 @@ export async function embed(runtime: IAgentRuntime, input: string) {
     if (config.provider === "Ollama") {
         return await getRemoteEmbedding(input, {
             model: config.model,
-            endpoint:
-                runtime.character.modelEndpointOverride ||
-                models[ModelProviderName.OLLAMA].endpoint,
+            endpoint: runtime.character.modelEndpointOverride ||
+                     models[ModelProviderName.OLLAMA].endpoint ||
+                     'http://localhost:11434', // Default Ollama endpoint
             isOllama: true,
             dimensions: config.dimensions,
         });
@@ -199,8 +199,9 @@ export async function embed(runtime: IAgentRuntime, input: string) {
                 models[ModelProviderName.GAIANET].endpoint ||
                 settings.SMALL_GAIANET_SERVER_URL ||
                 settings.MEDIUM_GAIANET_SERVER_URL ||
-                settings.LARGE_GAIANET_SERVER_URL,
-            apiKey: settings.GAIANET_API_KEY || runtime.token,
+                settings.LARGE_GAIANET_SERVER_URL ||
+                'https://api.gaianet.ai', // Default GaiaNet endpoint
+            apiKey: settings.GAIANET_API_KEY || runtime.token || '', // Empty string fallback
             dimensions: config.dimensions,
         });
     }
@@ -220,10 +221,10 @@ export async function embed(runtime: IAgentRuntime, input: string) {
     // Fallback to remote override
     return await getRemoteEmbedding(input, {
         model: config.model,
-        endpoint:
-            runtime.character.modelEndpointOverride ||
-            models[runtime.character.modelProvider].endpoint,
-        apiKey: runtime.token,
+        endpoint: runtime.character.modelEndpointOverride ||
+                 models[runtime.character.modelProvider].endpoint ||
+                 'https://api.bge.ai', // Default BGE endpoint
+        apiKey: runtime.token || '', // Empty string fallback
         dimensions: config.dimensions,
     });
 
