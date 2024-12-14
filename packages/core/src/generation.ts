@@ -37,19 +37,6 @@ import {
 } from "./types.js";
 import { fal } from "@fal-ai/client";
 
-/**
- * Send a message to the model for a text generateText - receive a string back and parse how you'd like
- * @param opts - The options for the generateText request.
- * @param opts.context The context of the message to be completed.
- * @param opts.stop A list of strings to stop the generateText at.
- * @param opts.model The model to use for generateText.
- * @param opts.frequency_penalty The frequency penalty to apply to the generateText.
- * @param opts.presence_penalty The presence penalty to apply to the generateText.
- * @param opts.temperature The temperature to apply to the generateText.
- * @param opts.max_context_length The maximum length of the context to apply to the generateText.
- * @returns The completed message.
- */
-
 export async function generateText({
     runtime,
     context,
@@ -76,7 +63,26 @@ export async function generateText({
     const provider = runtime.modelProvider;
     const endpoint =
         runtime.character.modelEndpointOverride || models[provider].endpoint;
-    let model = models[provider].model[modelClass];
+
+    // Fix type error with model indexing and add error handling
+    const modelConfig = models[provider]?.model;
+    if (!modelConfig) {
+        throw new Error(`No models found for provider ${provider}`);
+    }
+
+    // Convert modelClass to lowercase and validate
+    const validModelKeys = ['small', 'medium', 'large', 'embedding', 'image'] as const;
+    type ModelKey = typeof validModelKeys[number];
+    const modelKey = modelClass.toLowerCase() as ModelKey;
+
+    if (!validModelKeys.includes(modelKey)) {
+        throw new Error(`Invalid model class: ${modelClass}`);
+    }
+
+    let model = modelConfig[modelKey];
+    if (!model) {
+        throw new Error(`No model found for provider ${provider} and class ${modelClass}`);
+    }
 
     // allow character.json settings => secrets to override models
     // FIXME: add MODEL_MEDIUM support
@@ -152,7 +158,7 @@ export async function generateText({
     const max_context_length = models[provider].settings.maxInputTokens;
     const max_response_length = models[provider].settings.maxOutputTokens;
 
-    const apiKey = runtime.token;
+    const apiKey = runtime.token ?? "";
 
     try {
         elizaLogger.debug(
@@ -181,7 +187,7 @@ export async function generateText({
                 const openai = createOpenAI({
                     apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: openaiResponse } = await aiGenerateText({
@@ -204,7 +210,7 @@ export async function generateText({
 
             case ModelProviderName.GOOGLE: {
                 const google = createGoogleGenerativeAI({
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: googleResponse } = await aiGenerateText({
@@ -230,7 +236,7 @@ export async function generateText({
 
                 const anthropic = createAnthropic({
                     apiKey,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: anthropicResponse } = await aiGenerateText({
@@ -256,7 +262,7 @@ export async function generateText({
 
                 const anthropic = createAnthropic({
                     apiKey,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: anthropicResponse } = await aiGenerateText({
@@ -284,7 +290,7 @@ export async function generateText({
                 const grok = createOpenAI({
                     apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: grokResponse } = await aiGenerateText({
@@ -308,7 +314,10 @@ export async function generateText({
             }
 
             case ModelProviderName.GROQ: {
-                const groq = createGroq({ apiKey, fetch: runtime.fetch });
+                const groq = createGroq({
+                    apiKey,
+                    fetch: runtime.fetch || undefined
+                });
 
                 const { text: groqResponse } = await aiGenerateText({
                     model: groq.languageModel(model),
@@ -358,7 +367,7 @@ export async function generateText({
                 const openai = createOpenAI({
                     apiKey,
                     baseURL: serverUrl,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: redpillResponse } = await aiGenerateText({
@@ -385,7 +394,7 @@ export async function generateText({
                 const openrouter = createOpenAI({
                     apiKey,
                     baseURL: serverUrl,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: openrouterResponse } = await aiGenerateText({
@@ -412,7 +421,7 @@ export async function generateText({
 
                     const ollamaProvider = createOllama({
                         baseURL: models[provider].endpoint + "/api",
-                        fetch: runtime.fetch,
+                        fetch: runtime.fetch || undefined,
                     });
                     const ollama = ollamaProvider(model);
 
@@ -437,7 +446,7 @@ export async function generateText({
                 const heurist = createOpenAI({
                     apiKey: apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: heuristResponse } = await aiGenerateText({
@@ -486,7 +495,7 @@ export async function generateText({
                 const openai = createOpenAI({
                     apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: openaiResponse } = await aiGenerateText({
@@ -512,7 +521,7 @@ export async function generateText({
                 const galadriel = createOpenAI({
                     apiKey: apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: galadrielResponse } = await aiGenerateText({
