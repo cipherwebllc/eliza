@@ -1,11 +1,17 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["esm"],
-  dts: {
-    resolve: true,
+  entry: {
+    index: "src/index.ts",
+    client: "src/client.ts",
+    interactions: "src/interactions.ts",
+    post: "src/post.ts",
+    types: "src/types.ts",
+    environment: "src/environment.ts",
+    "rate-limiter": "src/rate-limiter.ts"
   },
+  format: ["esm"],
+  dts: true,
   sourcemap: true,
   clean: true,
   target: "es2020",

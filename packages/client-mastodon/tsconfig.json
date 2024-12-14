@@ -16,15 +16,6 @@
     "declaration": true,
     "composite": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/client.ts",
-    "src/interactions.ts",
-    "src/post.ts",
-    "src/types.ts",
-    "src/environment.ts",
-    "src/rate-limiter.ts",
-    "src/index.ts"
-  ],
+  "include": ["src/**/*.ts"],
   "references": [{ "path": "../core" }]
 }
