@@ -1,4 +1,4 @@
-import { MisskeyInteraction } from "./types";
+import { MisskeyInteraction } from "./types.js";
 
 export function createFavorite(postId: string): MisskeyInteraction {
   return {
@@ -7,9 +7,9 @@ export function createFavorite(postId: string): MisskeyInteraction {
   };
 }
 
-export function createRenote(postId: string): MisskeyInteraction {
+export function createBoost(postId: string): MisskeyInteraction {
   return {
-    type: "renote",
+    type: "boost",
     postId,
   };
 }

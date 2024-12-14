@@ -1,21 +1,30 @@
-import { Client as MisskeyClient } from "misskey-js";
-import { Client, Post } from "@ai16z/eliza";
-import { MisskeyClientConfig, MisskeyInteraction, MisskeyPost } from "./types";
-import { RateLimiter } from "./rate-limiter";
+import { api as misskeyApi } from "misskey-js";
+import { Client, Content, IAgentRuntime } from "@ai16z/eliza";
+import { MisskeyClientConfig, MisskeyInteraction, MisskeyPost } from "./types.js";
+import { RateLimiter } from "./rate-limiter.js";
 
 export class MisskeyClientImpl implements Client {
-  private client: MisskeyClient;
+  private client: InstanceType<typeof misskeyApi.APIClient>;
   private rateLimiter: RateLimiter;
+  private runtime?: IAgentRuntime;
 
   constructor(config: MisskeyClientConfig) {
-    this.client = new MisskeyClient({
+    this.client = new misskeyApi.APIClient({
       origin: config.environment.MISSKEY_API_URL,
       credential: config.environment.MISSKEY_TOKEN,
     });
     this.rateLimiter = new RateLimiter();
   }
 
-  async post(content: Post): Promise<string> {
+  async start(runtime: IAgentRuntime): Promise<void> {
+    this.runtime = runtime;
+  }
+
+  async stop(runtime: IAgentRuntime): Promise<void> {
+    this.runtime = undefined;
+  }
+
+  async post(content: Content): Promise<string> {
     await this.rateLimiter.waitForToken();
     const post: MisskeyPost = {
       text: content.text,
@@ -33,7 +42,7 @@ export class MisskeyClientImpl implements Client {
           noteId: interaction.postId,
         });
         break;
-      case "renote":
+      case "boost":
         await this.client.request("notes/create", {
           renoteId: interaction.postId,
         });

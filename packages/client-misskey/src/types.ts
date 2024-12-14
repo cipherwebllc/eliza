@@ -1,5 +1,5 @@
-import { Client as MisskeyClient } from "misskey-js";
-import type { MisskeyEnvironment } from "./environment";
+import { api as misskeyApi } from "misskey-js";
+import type { MisskeyEnvironment } from "./environment.js";
 
 export interface MisskeyClientConfig {
   environment: MisskeyEnvironment;
@@ -13,9 +13,9 @@ export interface MisskeyPost {
 }
 
 export type MisskeyInteraction = {
-  type: "favorite" | "renote" | "reply";
+  type: "favorite" | "boost" | "reply";
   postId: string;
   content?: string;
 };
 
-export { MisskeyClient };
+export { misskeyApi };
