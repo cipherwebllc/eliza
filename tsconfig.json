@@ -13,8 +13,13 @@
         "baseUrl": ".",
         "paths": {
             "@ai16z/*": ["packages/*/src"]
-        }
+        },
+        "composite": true
     },
-    "include": ["packages/*/src/**/*"],
-    "exclude": ["node_modules", "dist"]
+    "files": [],
+    "references": [
+        { "path": "packages/core" },
+        { "path": "packages/client-misskey" },
+        { "path": "packages/client-mastodon" }
+    ]
 }
