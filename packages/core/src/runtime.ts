@@ -1065,7 +1065,7 @@ Text: ${attachment.text}
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                getProviders(this as IAgentRuntime, message, initialState),
+                getProviders(this as IAgentRuntime),
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
@@ -1182,3 +1182,4 @@ Text: ${attachment.text}
         if (!items || items.length === 0) return "";
         return items.map(item => item.content.text).join("\n\n");
     }
+}
