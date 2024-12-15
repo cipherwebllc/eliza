@@ -456,16 +456,14 @@ export interface Evaluator {
 }
 
 /**
- * Provider for external data/services
+ * A context provider that provides additional context for message generation
  */
-export interface Provider {
-    /** Data retrieval function */
-    get: (
-        runtime: IAgentRuntime,
-        message: Memory,
-        state?: State
-    ) => Promise<any>;
-}
+export type Provider = {
+    /** The name of the provider */
+    name: string;
+    /** The function that provides the context */
+    provide: (runtime: IAgentRuntime) => Promise<string>;
+};
 
 /**
  * Represents a relationship between users

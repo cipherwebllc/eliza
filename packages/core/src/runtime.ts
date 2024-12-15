@@ -5,7 +5,7 @@ import {
     formatActionNames,
     formatActions,
 } from "./actions.js";
-import { addHeader, composeContext } from "./context.js";
+import { composeContext } from "./context.js";
 import { defaultCharacter } from "./defaultCharacter.js";
 import {
     evaluationTemplate,
@@ -23,6 +23,7 @@ import { parseJsonArrayFromText } from "./parsing.js";
 import { formatPosts } from "./posts.js";
 import { getProviders } from "./providers.js";
 import settings from "./settings.js";
+import { embed } from "./embedding.js";
 import {
     Character,
     Goal,
@@ -47,11 +48,9 @@ import {
     type Memory,
 } from "./types.js";
 import { stringToUuid } from "./uuid.js";
-import { MessageManager } from "./messages.js";
 import { DescriptionManager } from "./descriptions.js";
 import { LoreManager } from "./lore.js";
 import { DocumentsManager } from "./documents.js";
-import { KnowledgeManager } from "./knowledge.js";
 import { CacheManager } from "./cache.js";
 import { addHeader } from "./formatting.js";
 
@@ -980,16 +979,23 @@ Text: ${attachment.text}
                 .join(" ");
         }
 
-        const knowledegeData = await knowledge.get(this, message);
+        // Convert Memory[] to KnowledgeItem[] by mapping the required fields
+        const knowledgeData = (await this.knowledgeManager.searchMemoriesByEmbedding(
+            await embed(this, message.content.text),
+            { roomId: this.agentId, count: 5, match_threshold: 0.1 }
+        )).map(memory => ({
+            id: memory.id,
+            content: memory.content
+        }));
 
-        const formattedKnowledge = formatKnowledge(knowledegeData);
+        const formattedKnowledge = this.formatKnowledge(knowledgeData);
 
-        const initialState = {
+        const initialState: State = {
             agentId: this.agentId,
             bio: bio || "",
-            lore: lore || "",
-            messageDirections,
-            postDirections,
+            lore: await this.getSetting("lore") || "",
+            messageDirections: await this.getSetting("messageDirections") || "",
+            postDirections: await this.getSetting("postDirections") || "",
             roomId,
             agentName: this.character.name,
             senderName,
@@ -999,15 +1005,15 @@ Text: ${attachment.text}
             goalsData,
             recentMessages: formatMessages({ messages: recentMessagesData, actors: actorsData }),
             recentMessagesData,
-            actionNames: formatActionNames(validActions),
-            actions: formatActions(validActions),
-            actionsData: validActions,
-            actionExamples: composeActionExamples(validActions, 5),
-            providers: providersList.join(", "),
+            actionNames: formatActionNames(this.actions),
+            actions: formatActions(this.actions),
+            actionsData: this.actions,
+            actionExamples: composeActionExamples(this.actions, 5),
+            providers: this.providers.map(p => p.name).join(", "),
             recentInteractions: formattedMessageInteractions,
             recentInteractionsData: recentInteractions,
             formattedConversation: formatMessages({ messages: recentMessagesData, actors: actorsData }),
-            knowledge: this.formatKnowledge(knowledgeData),
+            knowledge: formattedKnowledge,
             knowledgeData,
             topic: this.character.topics && this.character.topics.length > 0
                 ? this.character.topics[Math.floor(Math.random() * this.character.topics.length)]
@@ -1171,10 +1177,8 @@ Text: ${attachment.text}
             attachments: formattedAttachments,
         } as State;
     }
-}
 
-const formatKnowledge = (knowledge: KnowledgeItem[]) => {
-    return knowledge
-        .map((knowledge) => `- ${knowledge.content.text}`)
-        .join("\n");
-};
+    private formatKnowledge(items: KnowledgeItem[]): string {
+        if (!items || items.length === 0) return "";
+        return items.map(item => item.content.text).join("\n\n");
+    }
