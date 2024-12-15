@@ -47,6 +47,13 @@ import {
     type Memory,
 } from "./types.js";
 import { stringToUuid } from "./uuid.js";
+import { MessageManager } from "./messages.js";
+import { DescriptionManager } from "./descriptions.js";
+import { LoreManager } from "./lore.js";
+import { DocumentsManager } from "./documents.js";
+import { KnowledgeManager } from "./knowledge.js";
+import { CacheManager } from "./cache.js";
+import { addHeader } from "./formatting.js";
 
 /**
  * Represents the runtime environment for an agent, handling message processing,
@@ -979,145 +986,51 @@ Text: ${attachment.text}
 
         const initialState = {
             agentId: this.agentId,
-            agentName,
-            bio,
-            lore,
-            adjective:
-                this.character.adjectives &&
-                this.character.adjectives.length > 0
-                    ? this.character.adjectives[
-                          Math.floor(
-                              Math.random() * this.character.adjectives.length
-                          )
-                      ]
-                    : "",
-            knowledge: formattedKnowledge,
-            knowledgeData: knowledegeData,
-            // Recent interactions between the sender and receiver, formatted as messages
-            recentMessageInteractions: formattedMessageInteractions,
-            // Recent interactions between the sender and receiver, formatted as posts
-            recentPostInteractions: formattedPostInteractions,
-            // Raw memory[] array of interactions
-            recentInteractionsData: recentInteractions,
-            // randomly pick one topic
-            topic:
-                this.character.topics && this.character.topics.length > 0
-                    ? this.character.topics[
-                          Math.floor(
-                              Math.random() * this.character.topics.length
-                          )
-                      ]
-                    : null,
-            topics:
-                this.character.topics && this.character.topics.length > 0
-                    ? `${this.character.name} is interested in ` +
-                      this.character.topics
-                          .sort(() => 0.5 - Math.random())
-                          .slice(0, 5)
-                          .map((topic, index) => {
-                              if (index === this.character.topics.length - 2) {
-                                  return topic + " and ";
-                              }
-                              // if last topic, don't add a comma
-                              if (index === this.character.topics.length - 1) {
-                                  return topic;
-                              }
-                              return topic + ", ";
-                          })
-                          .join("")
-                    : "",
-            characterPostExamples:
-                formattedCharacterPostExamples &&
-                formattedCharacterPostExamples.replaceAll("\n", "").length > 0
-                    ? addHeader(
-                          `# Example Posts for ${this.character.name}`,
-                          formattedCharacterPostExamples
-                      )
-                    : "",
-            characterMessageExamples:
-                formattedCharacterMessageExamples &&
-                formattedCharacterMessageExamples.replaceAll("\n", "").length >
-                    0
-                    ? addHeader(
-                          `# Example Conversations for ${this.character.name}`,
-                          formattedCharacterMessageExamples
-                      )
-                    : "",
-            messageDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.chat.length > 0
-                    ? addHeader(
-                          "# Message Directions for " + this.character.name,
-                          (() => {
-                              const all = this.character?.style?.all || [];
-                              const chat = this.character?.style?.chat || [];
-                              return [...all, ...chat].join("\n");
-                          })()
-                      )
-                    : "",
-
-            postDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.post.length > 0
-                    ? addHeader(
-                          "# Post Directions for " + this.character.name,
-                          (() => {
-                              const all = this.character?.style?.all || [];
-                              const post = this.character?.style?.post || [];
-                              return [...all, ...post].join("\n");
-                          })()
-                      )
-                    : "",
-
-            //old logic left in for reference
-            //food for thought. how could we dynamically decide what parts of the character to add to the prompt other than random? rag? prompt the llm to decide?
-            /*
-            postDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.post.length > 0
-                    ? addHeader(
-                            "# Post Directions for " + this.character.name,
-                            (() => {
-                                const all = this.character?.style?.all || [];
-                                const post = this.character?.style?.post || [];
-                                const shuffled = [...all, ...post].sort(
-                                    () => 0.5 - Math.random()
-                                );
-                                return shuffled
-                                    .slice(0, conversationLength / 2)
-                                    .join("\n");
-                            })()
-                        )
-                    : "",*/
-            // Agent runtime stuff
-            senderName,
-            actors:
-                actors && actors.length > 0
-                    ? addHeader("# Actors", actors)
-                    : "",
-            actorsData,
+            bio: bio || "",
+            lore: lore || "",
+            messageDirections,
+            postDirections,
             roomId,
-            goals:
-                goals && goals.length > 0
-                    ? addHeader(
-                          "# Goals\n{{agentName}} should prioritize accomplishing the objectives that are in progress.",
-                          goals
-                      )
-                    : "",
+            agentName: this.character.name,
+            senderName,
+            actors: formatActors({ actors: actorsData }),
+            actorsData,
+            goals: formatGoalsAsString({ goals: goalsData }),
             goalsData,
-            recentMessages:
-                recentMessages && recentMessages.length > 0
-                    ? addHeader("# Conversation Messages", recentMessages)
-                    : "",
-            recentPosts:
-                recentPosts && recentPosts.length > 0
-                    ? addHeader("# Posts in Thread", recentPosts)
-                    : "",
+            recentMessages: formatMessages({ messages: recentMessagesData, actors: actorsData }),
             recentMessagesData,
-            attachments:
-                formattedAttachments && formattedAttachments.length > 0
-                    ? addHeader("# Attachments", formattedAttachments)
-                    : "",
+            actionNames: formatActionNames(validActions),
+            actions: formatActions(validActions),
+            actionsData: validActions,
+            actionExamples: composeActionExamples(validActions, 5),
+            providers: providersList.join(", "),
+            recentInteractions: formattedMessageInteractions,
+            recentInteractionsData: recentInteractions,
+            formattedConversation: formatMessages({ messages: recentMessagesData, actors: actorsData }),
+            knowledge: this.formatKnowledge(knowledgeData),
+            knowledgeData,
+            topic: this.character.topics && this.character.topics.length > 0
+                ? this.character.topics[Math.floor(Math.random() * this.character.topics.length)]
+                : "",
+            topics: Array.isArray(this.character.topics)
+                ? this.character.topics
+                    .map((topic, index, array) => {
+                        if (index === array.length - 2) {
+                            return topic + " and ";
+                        }
+                        if (index === array.length - 1) {
+                            return topic;
+                        }
+                        return topic + ", ";
+                    })
+                    .join("")
+                : (typeof this.character.topics === 'string' ? this.character.topics : ""),
+            characterPostExamples: formattedCharacterPostExamples?.length
+                ? addHeader(`# Example Posts for ${this.character.name}`, formattedCharacterPostExamples)
+                : "",
+            characterMessageExamples: formattedCharacterMessageExamples?.length
+                ? addHeader(`# Example Messages for ${this.character.name}`, formattedCharacterMessageExamples)
+                : "",
             ...additionalKeys,
         } as State;
 
@@ -1142,7 +1055,6 @@ Text: ${attachment.text}
             }
             return null;
         });
-
         const [resolvedEvaluators, resolvedActions, providers] =
             await Promise.all([
                 Promise.all(evaluatorPromises),
@@ -1185,10 +1097,12 @@ Text: ${attachment.text}
                 evaluatorsData.length > 0
                     ? formatEvaluatorExamples(evaluatorsData)
                     : "",
-            providers: addHeader(
-                `# Additional Information About ${this.character.name} and The World`,
-                providers
-            ),
+            providers: providers && providers.length > 0
+                ? addHeader(
+                    "# Additional Information",
+                    Array.isArray(providers) ? providers.join(", ") : providers
+                )
+                : "",
         };
 
         return { ...initialState, ...actionState } as State;
@@ -1197,7 +1111,7 @@ Text: ${attachment.text}
     async updateRecentMessageState(state: State): Promise<State> {
         const conversationLength = this.getConversationLength();
         const recentMessagesData = await this.messageManager.getMemories({
-            roomId: state.roomId,
+            roomId: state.roomId || stringToUuid("default-room"),
             count: conversationLength,
             unique: false,
         });
