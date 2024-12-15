@@ -1,11 +1,11 @@
-import { embed, getEmbeddingZeroVector } from "./embedding.ts";
-import elizaLogger from "./logger.ts";
+import { embed, getEmbeddingZeroVector } from "./embedding.js";
+import elizaLogger from "./logger.js";
 import {
     IAgentRuntime,
     IMemoryManager,
     type Memory,
     type UUID,
-} from "./types.ts";
+} from "./types.js";
 
 const defaultMatchThreshold = 0.1;
 const defaultMatchCount = 10;
@@ -33,6 +33,20 @@ export class MemoryManager implements IMemoryManager {
     constructor(opts: { tableName: string; runtime: IAgentRuntime }) {
         this.runtime = opts.runtime;
         this.tableName = opts.tableName;
+    }
+
+    /**
+     * Gets memories related to the given memory.
+     * Base implementation returns recent memories from the same room.
+     * @param memory The memory to get related memories for
+     * @returns A Promise resolving to an array of related Memory objects
+     */
+    async get(memory: Memory): Promise<Memory[]> {
+        return this.getMemories({
+            roomId: memory.roomId,
+            count: 10,
+            unique: true
+        });
     }
 
     /**
@@ -171,6 +185,10 @@ export class MemoryManager implements IMemoryManager {
      */
     async createMemory(memory: Memory, unique = false): Promise<void> {
         // TODO: check memory.agentId == this.runtime.agentId
+
+        if (!memory.id) {
+            throw new Error("Memory ID is required");
+        }
 
         const existingMessage =
             await this.runtime.databaseAdapter.getMemoryById(memory.id);

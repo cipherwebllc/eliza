@@ -7,23 +7,25 @@ import {
     generateObject as aiGenerateObject,
     generateText as aiGenerateText,
     GenerateObjectResult,
+    LanguageModel,
 } from "ai";
 import { Buffer } from "buffer";
 import { createOllama } from "ollama-ai-provider";
 import OpenAI from "openai";
 import { encodingForModel, TiktokenModel } from "js-tiktoken";
 import Together from "together-ai";
-import { ZodSchema } from "zod";
-import { elizaLogger } from "./index.ts";
-import { getModel, models } from "./models.ts";
+import { z } from "zod";
+import type { ZodSchema } from "zod";
+import { elizaLogger } from "./index.js";
+import { getModel, models } from "./models.js";
 import {
     parseBooleanFromText,
     parseJsonArrayFromText,
     parseJSONObjectFromText,
     parseShouldRespondFromText,
     parseActionResponseFromText
-} from "./parsing.ts";
-import settings from "./settings.ts";
+} from "./parsing.js";
+import settings from "./settings.js";
 import {
     Content,
     IAgentRuntime,
@@ -32,23 +34,19 @@ import {
     ModelClass,
     ModelProviderName,
     ServiceType,
-    SearchResponse,
-    ActionResponse
-} from "./types.ts";
+    ActionResponse,
+    SearchResponse
+} from "./types.js";
 import { fal } from "@fal-ai/client";
 
-/**
- * Send a message to the model for a text generateText - receive a string back and parse how you'd like
- * @param opts - The options for the generateText request.
- * @param opts.context The context of the message to be completed.
- * @param opts.stop A list of strings to stop the generateText at.
- * @param opts.model The model to use for generateText.
- * @param opts.frequency_penalty The frequency penalty to apply to the generateText.
- * @param opts.presence_penalty The presence penalty to apply to the generateText.
- * @param opts.temperature The temperature to apply to the generateText.
- * @param opts.max_context_length The maximum length of the context to apply to the generateText.
- * @returns The completed message.
- */
+// Type guards for model validation
+function isValidModelProvider(provider: string): provider is ModelProviderName {
+    return Object.values(ModelProviderName).includes(provider as ModelProviderName);
+}
+
+function isValidModelClass(modelClass: string): modelClass is ModelClass {
+    return Object.values(ModelClass).includes(modelClass as ModelClass);
+}
 
 export async function generateText({
     runtime,
@@ -74,9 +72,28 @@ export async function generateText({
     });
 
     const provider = runtime.modelProvider;
+    if (!isValidModelProvider(provider)) {
+        throw new Error(`Invalid model provider: ${provider}`);
+    }
+
     const endpoint =
         runtime.character.modelEndpointOverride || models[provider].endpoint;
-    let model = models[provider].model[modelClass];
+
+    // Fix type error with model indexing and add error handling
+    const modelConfig = models[provider]?.model;
+    if (!modelConfig) {
+        throw new Error(`No models found for provider ${provider}`);
+    }
+
+    // Convert modelClass to lowercase and validate
+    if (!isValidModelClass(modelClass)) {
+        throw new Error(`Invalid model class: ${modelClass}`);
+    }
+
+    let model = modelConfig[modelClass];
+    if (!model) {
+        throw new Error(`No model found for provider ${provider} and class ${modelClass}`);
+    }
 
     // allow character.json settings => secrets to override models
     // FIXME: add MODEL_MEDIUM support
@@ -152,7 +169,7 @@ export async function generateText({
     const max_context_length = models[provider].settings.maxInputTokens;
     const max_response_length = models[provider].settings.maxOutputTokens;
 
-    const apiKey = runtime.token;
+    const apiKey = runtime.token ?? "";
 
     try {
         elizaLogger.debug(
@@ -181,7 +198,7 @@ export async function generateText({
                 const openai = createOpenAI({
                     apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: openaiResponse } = await aiGenerateText({
@@ -204,7 +221,7 @@ export async function generateText({
 
             case ModelProviderName.GOOGLE: {
                 const google = createGoogleGenerativeAI({
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: googleResponse } = await aiGenerateText({
@@ -230,7 +247,7 @@ export async function generateText({
 
                 const anthropic = createAnthropic({
                     apiKey,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: anthropicResponse } = await aiGenerateText({
@@ -256,7 +273,7 @@ export async function generateText({
 
                 const anthropic = createAnthropic({
                     apiKey,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: anthropicResponse } = await aiGenerateText({
@@ -284,7 +301,7 @@ export async function generateText({
                 const grok = createOpenAI({
                     apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: grokResponse } = await aiGenerateText({
@@ -308,7 +325,10 @@ export async function generateText({
             }
 
             case ModelProviderName.GROQ: {
-                const groq = createGroq({ apiKey, fetch: runtime.fetch });
+                const groq = createGroq({
+                    apiKey,
+                    fetch: runtime.fetch || undefined
+                });
 
                 const { text: groqResponse } = await aiGenerateText({
                     model: groq.languageModel(model),
@@ -342,11 +362,11 @@ export async function generateText({
 
                 response = await textGenerationService.queueTextCompletion(
                     context,
-                    temperature,
+                    temperature ?? 0.7,
                     _stop,
-                    frequency_penalty,
-                    presence_penalty,
-                    max_response_length
+                    frequency_penalty ?? 0,
+                    presence_penalty ?? 0,
+                    max_response_length ?? 1000
                 );
                 elizaLogger.debug("Received response from local Llama model.");
                 break;
@@ -358,7 +378,7 @@ export async function generateText({
                 const openai = createOpenAI({
                     apiKey,
                     baseURL: serverUrl,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: redpillResponse } = await aiGenerateText({
@@ -385,7 +405,7 @@ export async function generateText({
                 const openrouter = createOpenAI({
                     apiKey,
                     baseURL: serverUrl,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: openrouterResponse } = await aiGenerateText({
@@ -412,7 +432,7 @@ export async function generateText({
 
                     const ollamaProvider = createOllama({
                         baseURL: models[provider].endpoint + "/api",
-                        fetch: runtime.fetch,
+                        fetch: runtime.fetch || undefined,
                     });
                     const ollama = ollamaProvider(model);
 
@@ -437,7 +457,7 @@ export async function generateText({
                 const heurist = createOpenAI({
                     apiKey: apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: heuristResponse } = await aiGenerateText({
@@ -486,7 +506,7 @@ export async function generateText({
                 const openai = createOpenAI({
                     apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: openaiResponse } = await aiGenerateText({
@@ -512,7 +532,7 @@ export async function generateText({
                 const galadriel = createOpenAI({
                     apiKey: apiKey,
                     baseURL: endpoint,
-                    fetch: runtime.fetch,
+                    fetch: runtime.fetch || undefined,
                 });
 
                 const { text: galadrielResponse } = await aiGenerateText({
@@ -969,37 +989,40 @@ export const generateImage = async (
                 );
             }
 
-            const imageURL = await response.json();
+            const imageURL = await response.json() as string;
             return { success: true, data: [imageURL] };
         } else if (
             runtime.imageModelProvider === ModelProviderName.TOGETHER ||
-            // for backwards compat
             runtime.imageModelProvider === ModelProviderName.LLAMACLOUD
         ) {
             const together = new Together({ apiKey: apiKey as string });
-            const response = await together.images.create({
+
+            // Define the Together API response type based on actual usage
+            interface TogetherAIImageData {
+                url: string;
+            }
+
+            interface TogetherAIImageResponse {
+                data: TogetherAIImageData[];
+            }
+
+            // First cast to unknown, then to our expected type
+            const imageFile = (await together.images.create({
                 model: "black-forest-labs/FLUX.1-schnell",
                 prompt: data.prompt,
                 width: data.width,
                 height: data.height,
                 steps: modelSettings?.steps ?? 4,
                 n: data.count,
-            });
+            }) as unknown) as TogetherAIImageResponse;
 
-            // Add type assertion to handle the response properly
-            const togetherResponse =
-                response as unknown as TogetherAIImageResponse;
-
-            if (
-                !togetherResponse.data ||
-                !Array.isArray(togetherResponse.data)
-            ) {
+            if (!imageFile || !imageFile.data || !Array.isArray(imageFile.data)) {
                 throw new Error("Invalid response format from Together AI");
             }
 
-            // Rest of the code remains the same...
+            // Convert the response to base64
             const base64s = await Promise.all(
-                togetherResponse.data.map(async (image) => {
+                imageFile.data.map(async (image) => {
                     if (!image.url) {
                         elizaLogger.error("Missing URL in image data:", image);
                         throw new Error("Missing URL in Together AI response");
@@ -1056,8 +1079,8 @@ export const generateImage = async (
                     : {}),
             };
 
-            // Subscribe to the model
-            const result = await fal.subscribe(model, {
+            // Subscribe to the model using string & {} type to match fal-ai's type definition
+            const result = await fal.subscribe(model as string & {}, {
                 input,
                 logs: true,
                 onQueueUpdate: (update) => {
@@ -1068,7 +1091,7 @@ export const generateImage = async (
             });
 
             // Convert the returned image URLs to base64 to match existing functionality
-            const base64Promises = result.data.images.map(async (image) => {
+            const base64Promises = result.data.images.map(async (image: { url: string; content_type: string }) => {
                 const response = await fetch(image.url);
                 const blob = await response.blob();
                 const buffer = await blob.arrayBuffer();
@@ -1157,29 +1180,48 @@ export const generateWebSearch = async (
         });
 
         if (!response.ok) {
-            throw new elizaLogger.error(
-                `HTTP error! status: ${response.status}`
-            );
+            const error = new Error(`HTTP error! status: ${response.status}`);
+            elizaLogger.error(error);
+            throw error;
         }
 
-        const data: SearchResponse = await response.json();
+        const data = await response.json() as SearchResponse;
         return data;
     } catch (error) {
         elizaLogger.error("Error:", error);
+        throw error; // Re-throw to maintain Promise<SearchResponse> return type
     }
 };
+
 /**
  * Configuration options for generating objects with a model.
  */
 export interface GenerationOptions {
+    /** Runtime environment */
     runtime: IAgentRuntime;
+
+    /** Context for generation */
     context: string;
+
+    /** Model class to use */
     modelClass: ModelClass;
+
+    /** Optional schema for validation */
     schema?: ZodSchema;
+
+    /** Optional schema name */
     schemaName?: string;
+
+    /** Optional schema description */
     schemaDescription?: string;
+
+    /** Optional stop sequences */
     stop?: string[];
+
+    /** Generation mode */
     mode?: "auto" | "json" | "tool";
+
+    /** Optional provider metadata */
     experimental_providerMetadata?: Record<string, unknown>;
 }
 
@@ -1211,6 +1253,7 @@ export const generateObjectV2 = async ({
     schemaDescription,
     stop,
     mode = "json",
+    experimental_providerMetadata,
 }: GenerationOptions): Promise<GenerateObjectResult<unknown>> => {
     if (!context) {
         const errorMessage = "generateObjectV2 context is empty";
@@ -1235,21 +1278,21 @@ export const generateObjectV2 = async ({
 
         const modelOptions: ModelSettings = {
             prompt: context,
-            temperature,
-            maxTokens: max_response_length,
-            frequencyPenalty: frequency_penalty,
-            presencePenalty: presence_penalty,
+            temperature: temperature ?? 0.7,
+            maxTokens: max_response_length ?? 1000,
+            frequencyPenalty: frequency_penalty ?? 0,
+            presencePenalty: presence_penalty ?? 0,
             stop: stop || models[provider].settings.stop,
         };
 
         const response = await handleProvider({
             provider,
             model,
-            apiKey,
+            apiKey: apiKey ?? "",
             schema,
             schemaName,
             schemaDescription,
-            mode,
+            mode: mode as "json" | undefined,
             modelOptions,
             runtime,
             context,
@@ -1346,10 +1389,10 @@ async function handleOpenAI({
     const openai = createOpenAI({ apiKey, baseURL });
     return await aiGenerateObject({
         model: openai.languageModel(model),
-        schema,
+        schema: schema as z.ZodSchema,
         schemaName,
         schemaDescription,
-        mode,
+        mode: mode as "json",
         ...modelOptions,
     });
 }
@@ -1372,10 +1415,10 @@ async function handleAnthropic({
     const anthropic = createAnthropic({ apiKey });
     return await aiGenerateObject({
         model: anthropic.languageModel(model),
-        schema,
+        schema: schema as z.ZodSchema,
         schemaName,
         schemaDescription,
-        mode,
+        mode: mode as "json",
         ...modelOptions,
     });
 }
@@ -1398,10 +1441,11 @@ async function handleGrok({
     const grok = createOpenAI({ apiKey, baseURL: models.grok.endpoint });
     return await aiGenerateObject({
         model: grok.languageModel(model, { parallelToolCalls: false }),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1424,10 +1468,11 @@ async function handleGroq({
     const groq = createGroq({ apiKey });
     return await aiGenerateObject({
         model: groq.languageModel(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1450,10 +1495,11 @@ async function handleGoogle({
     const google = createGoogleGenerativeAI();
     return await aiGenerateObject({
         model: google(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1476,10 +1522,11 @@ async function handleRedPill({
     const redPill = createOpenAI({ apiKey, baseURL: models.redpill.endpoint });
     return await aiGenerateObject({
         model: redPill.languageModel(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1505,10 +1552,11 @@ async function handleOpenRouter({
     });
     return await aiGenerateObject({
         model: openRouter.languageModel(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1534,10 +1582,11 @@ async function handleOllama({
     const ollama = ollamaProvider(model);
     return await aiGenerateObject({
         model: ollama,
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import knowledge from '../knowledge';
-import { AgentRuntime } from '../runtime';
-import { KnowledgeItem, Memory } from '../types';
-import { getEmbeddingZeroVector } from '../embedding';
+import knowledge from '../knowledge.js';
+import { AgentRuntime } from '../runtime.js';
+import { KnowledgeItem, Memory } from '../types.js';
+import { getEmbeddingZeroVector } from '../embedding.js';
 
 // Mock dependencies
 vi.mock('../embedding', () => ({

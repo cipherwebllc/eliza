@@ -4,7 +4,22 @@ import {
     type Content,
     type Memory,
     type UUID,
-} from "./types.ts";
+} from "./types.js";
+import { MemoryManager } from "./memory.js";
+
+export class MessageManager extends MemoryManager {
+    constructor(opts: { runtime: IAgentRuntime; tableName: string }) {
+        super(opts);
+    }
+
+    async get(message: Memory): Promise<Memory[]> {
+        return this.getMemories({
+            roomId: message.roomId,
+            count: 10,
+            unique: true
+        });
+    }
+}
 
 /**
  * Get details for a list of actors.
@@ -81,7 +96,7 @@ export const formatMessages = ({
                     ? ` (Attachments: ${attachments.map((media) => `[${media.id} - ${media.title} (${media.url})]`).join(", ")})`
                     : "";
 
-            const timestamp = formatTimestamp(message.createdAt);
+            const timestamp = formatTimestamp(message.createdAt ?? Date.now());
 
             const shortId = message.userId.slice(-5);
 

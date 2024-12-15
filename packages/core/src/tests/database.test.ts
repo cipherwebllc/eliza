@@ -1,5 +1,5 @@
 /* eslint-disable no-dupe-class-members */
-import { DatabaseAdapter } from "../database.ts"; // Adjust the import based on your project structure
+import { DatabaseAdapter } from "../database.js"; // Adjust the import based on your project structure
 import {
     Memory,
     Actor,
@@ -9,7 +9,7 @@ import {
     Participant,
     Relationship,
     UUID,
-} from "../types"; // Adjust based on your types location
+} from "../types.js"; // Adjust based on your types location
 
 class MockDatabaseAdapter extends DatabaseAdapter {
     getMemoryById(_id: UUID): Promise<Memory | null> {

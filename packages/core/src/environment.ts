@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ModelProviderName, Clients } from "./types";
+import { ModelProviderName, Clients } from "./types.js";
 
 // TODO: TO COMPLETE
 export const envSchema = z.object({

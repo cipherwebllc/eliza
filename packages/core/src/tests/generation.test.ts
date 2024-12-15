@@ -1,16 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { ModelProviderName, IAgentRuntime } from "../types";
-import { models } from "../models";
+import { ModelProviderName, IAgentRuntime } from "../types.js";
+import { models } from "../models.js";
 import {
     generateText,
     generateTrueOrFalse,
     splitChunks,
     trimTokens,
-} from "../generation";
+} from "../generation.js";
 import type { TiktokenModel } from "js-tiktoken";
 
 // Mock the elizaLogger
-vi.mock("../index.ts", () => ({
+vi.mock("../index.js", () => ({
     elizaLogger: {
         log: vi.fn(),
         info: vi.fn(),
@@ -19,8 +19,8 @@ vi.mock("../index.ts", () => ({
 }));
 
 // Mock the generation functions
-vi.mock("../generation", async () => {
-    const actual = await vi.importActual("../generation");
+vi.mock("../generation.js", async () => {
+    const actual = await vi.importActual("../generation.js");
     return {
         ...actual,
         generateText: vi.fn().mockImplementation(async ({ context }) => {
