@@ -16,14 +16,12 @@ import {
 import { generateText } from "./generation.js";
 import { formatGoalsAsString, getGoals } from "./goals.js";
 import { elizaLogger } from "./index.js";
-import knowledge from "./knowledge.js";
 import { MemoryManager } from "./memory.js";
 import { formatActors, formatMessages, getActorDetails } from "./messages.js";
 import { parseJsonArrayFromText } from "./parsing.js";
 import { formatPosts } from "./posts.js";
 import { getProviders } from "./providers.js";
-import settings from "./settings.js";
-import { embed } from "./embedding.js";
+import { embed, getEmbeddingZeroVector } from "./embedding.js";
 import {
     Character,
     Goal,
@@ -48,10 +46,6 @@ import {
     type Memory,
 } from "./types.js";
 import { stringToUuid } from "./uuid.js";
-import { DescriptionManager } from "./descriptions.js";
-import { LoreManager } from "./lore.js";
-import { DocumentsManager } from "./documents.js";
-import { CacheManager } from "./cache.js";
 import { addHeader } from "./formatting.js";
 
 /**
@@ -382,8 +376,7 @@ export class AgentRuntime implements IAgentRuntime {
     async initialize() {
         for (const [serviceType, service] of this.services.entries()) {
             try {
-                const runtime: IAgentRuntime = this;
-                await service.initialize(runtime);
+                await service.initialize(this);
                 this.services.set(serviceType, service);
                 elizaLogger.success(
                     `Service ${serviceType} initialized successfully`
@@ -435,11 +428,16 @@ export class AgentRuntime implements IAgentRuntime {
                 item.slice(0, 100)
             );
 
-            await knowledge.set(this, {
+            await this.knowledgeManager.createMemory({
                 id: knowledgeId,
+                agentId: this.agentId,
+                roomId: this.agentId,
+                userId: this.agentId,
+                createdAt: Date.now(),
                 content: {
                     text: item,
                 },
+                embedding: getEmbeddingZeroVector(),
             });
         }
     }
@@ -784,28 +782,10 @@ export class AgentRuntime implements IAgentRuntime {
             }),
         ]);
 
-        const goals = formatGoalsAsString({ goals: goalsData });
-
-        const actors = formatActors({ actors: actorsData ?? [] });
-
-        const recentMessages = formatMessages({
-            messages: recentMessagesData,
-            actors: actorsData,
-        });
-
-        const recentPosts = formatPosts({
-            messages: recentMessagesData,
-            actors: actorsData,
-            conversationHeader: false,
-        });
-
-        // const lore = formatLore(loreData);
-
         const senderName = actorsData?.find(
             (actor: Actor) => actor.id === userId
         )?.name;
 
-        // TODO: We may wish to consolidate and just accept character.name here instead of the actor name
         const agentName =
             actorsData?.find((actor: Actor) => actor.id === this.agentId)
                 ?.name || this.character.name;
@@ -1040,24 +1020,16 @@ Text: ${attachment.text}
             ...additionalKeys,
         } as State;
 
-        const actionPromises = this.actions.map(async (action: Action) => {
-            const runtime: IAgentRuntime = this;
-            const result = await action.validate(runtime, message, initialState);
-            if (result) {
-                return action;
+        const actionPromises = this.actions.map(async (action) => {
+            if (await action.validate(this, message)) {
+                return action.handler(this, message);
             }
             return null;
         });
 
         const evaluatorPromises = this.evaluators.map(async (evaluator) => {
-            const runtime: IAgentRuntime = this;
-            const result = await evaluator.validate(
-                runtime,
-                message,
-                initialState
-            );
-            if (result) {
-                return evaluator;
+            if (await evaluator.validate(this, message)) {
+                return evaluator.handler(this, message);
             }
             return null;
         });
@@ -1065,7 +1037,7 @@ Text: ${attachment.text}
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                getProviders(this as IAgentRuntime),
+                getProviders(this),
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
