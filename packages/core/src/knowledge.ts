@@ -97,7 +97,7 @@ export class KnowledgeManager extends MemoryManager implements IMemoryManager {
         }
     }
 
-    protected preprocess(content: string): string {
+    public preprocess(content: string): string {
         elizaLogger.debug("Preprocessing text:", {
             input: content,
             length: content?.length,
