@@ -35,6 +35,7 @@ import { formatGoalsAsString, getGoals } from "./goals.js";
 import { composeActionExamples, formatActionNames, formatActions } from "./actions.js";
 import { evaluationTemplate, formatEvaluatorExamples, formatEvaluatorNames, formatEvaluators } from "./evaluators.js";
 import { getProviders } from "./providers.js";
+import { addHeader } from "./formatting.js";
 
 /**
  * Represents the runtime environment for an agent, handling message processing,
@@ -903,7 +904,7 @@ Text: ${attachment.text}
             actions: formatActions(validActions),
             actionsData: validActions,
             actionExamples: composeActionExamples(validActions, 5),
-            providers: providersList.map(p => p.name).join(", "),
+            providers: providersList.join(", "),
             recentInteractions: formattedMessageInteractions,
             recentInteractionsData: recentInteractions,
             formattedConversation: formatMessages({ messages: recentMessagesData, actors: actorsData }),
@@ -925,11 +926,11 @@ Text: ${attachment.text}
                     })
                     .join("")
                 : (typeof this.character.topics === 'string' ? this.character.topics : ""),
-            characterPostExamples: formattedCharacterPostExamples && formattedCharacterPostExamples.length > 0
-                ? addHeader(`# Example Posts for ${this.character.name}`, formattedCharacterPostExamples)
+            characterPostExamples: formattedCharacterPostExamples?.length
+                ? addHeader("# Example Posts", formattedCharacterPostExamples)
                 : "",
-            characterMessageExamples: formattedCharacterMessageExamples && formattedCharacterMessageExamples.length > 0
-                ? addHeader(`# Example Messages for ${this.character.name}`, formattedCharacterMessageExamples)
+            characterMessageExamples: formattedCharacterMessageExamples?.length
+                ? addHeader("# Example Messages", formattedCharacterMessageExamples)
                 : ""
         };
 
@@ -969,8 +970,8 @@ Text: ${attachment.text}
                     ? formatEvaluatorExamples(evaluatorsData)
                     : "",
             providers: addHeader(
-                `# Additional Information About ${this.character.name} and The World`,
-                providers
+                "# Additional Information",
+                providersList.join(", ")
             ),
         };
 
@@ -980,7 +981,7 @@ Text: ${attachment.text}
     async updateRecentMessageState(state: State): Promise<State> {
         const conversationLength = this.getConversationLength();
         const recentMessagesData = await this.messageManager.getMemories({
-            roomId: state.roomId,
+            roomId: state.roomId || stringToUuid("default-room"),
             count: conversationLength,
             unique: false,
         });
