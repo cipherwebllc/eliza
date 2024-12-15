@@ -1,6 +1,6 @@
 import { Plugin } from "@ai16z/eliza";
-import { icpWalletProvider } from "./providers/wallet";
-import { executeCreateToken } from "./actions/createToken";
+import { icpWalletProvider } from "./providers/wallet.js";
+import { executeCreateToken } from "./actions/createToken.js";
 
 export const icpPlugin: Plugin = {
     name: "icp",
