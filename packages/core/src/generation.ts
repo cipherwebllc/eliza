@@ -7,13 +7,15 @@ import {
     generateObject as aiGenerateObject,
     generateText as aiGenerateText,
     GenerateObjectResult,
+    LanguageModel,
 } from "ai";
 import { Buffer } from "buffer";
 import { createOllama } from "ollama-ai-provider";
 import OpenAI from "openai";
 import { encodingForModel, TiktokenModel } from "js-tiktoken";
 import Together from "together-ai";
-import { ZodSchema } from "zod";
+import { z } from "zod";
+import type { ZodSchema } from "zod";
 import { elizaLogger } from "./index.js";
 import { getModel, models } from "./models.js";
 import {
@@ -32,10 +34,19 @@ import {
     ModelClass,
     ModelProviderName,
     ServiceType,
-    SearchResponse,
-    ActionResponse
+    ActionResponse,
+    SearchResponse
 } from "./types.js";
 import { fal } from "@fal-ai/client";
+
+// Type guards for model validation
+function isValidModelProvider(provider: string): provider is ModelProviderName {
+    return Object.values(ModelProviderName).includes(provider as ModelProviderName);
+}
+
+function isValidModelClass(modelClass: string): modelClass is ModelClass {
+    return Object.values(ModelClass).includes(modelClass as ModelClass);
+}
 
 export async function generateText({
     runtime,
@@ -61,6 +72,10 @@ export async function generateText({
     });
 
     const provider = runtime.modelProvider;
+    if (!isValidModelProvider(provider)) {
+        throw new Error(`Invalid model provider: ${provider}`);
+    }
+
     const endpoint =
         runtime.character.modelEndpointOverride || models[provider].endpoint;
 
@@ -71,15 +86,11 @@ export async function generateText({
     }
 
     // Convert modelClass to lowercase and validate
-    const validModelKeys = ['small', 'medium', 'large', 'embedding', 'image'] as const;
-    type ModelKey = typeof validModelKeys[number];
-    const modelKey = modelClass.toLowerCase() as ModelKey;
-
-    if (!validModelKeys.includes(modelKey)) {
+    if (!isValidModelClass(modelClass)) {
         throw new Error(`Invalid model class: ${modelClass}`);
     }
 
-    let model = modelConfig[modelKey];
+    let model = modelConfig[modelClass];
     if (!model) {
         throw new Error(`No model found for provider ${provider} and class ${modelClass}`);
     }
@@ -351,11 +362,11 @@ export async function generateText({
 
                 response = await textGenerationService.queueTextCompletion(
                     context,
-                    temperature,
+                    temperature ?? 0.7,
                     _stop,
-                    frequency_penalty,
-                    presence_penalty,
-                    max_response_length
+                    frequency_penalty ?? 0,
+                    presence_penalty ?? 0,
+                    max_response_length ?? 1000
                 );
                 elizaLogger.debug("Received response from local Llama model.");
                 break;
@@ -978,37 +989,40 @@ export const generateImage = async (
                 );
             }
 
-            const imageURL = await response.json();
+            const imageURL = await response.json() as string;
             return { success: true, data: [imageURL] };
         } else if (
             runtime.imageModelProvider === ModelProviderName.TOGETHER ||
-            // for backwards compat
             runtime.imageModelProvider === ModelProviderName.LLAMACLOUD
         ) {
             const together = new Together({ apiKey: apiKey as string });
-            const response = await together.images.create({
+
+            // Define the Together API response type based on actual usage
+            interface TogetherAIImageData {
+                url: string;
+            }
+
+            interface TogetherAIImageResponse {
+                data: TogetherAIImageData[];
+            }
+
+            // First cast to unknown, then to our expected type
+            const imageFile = (await together.images.create({
                 model: "black-forest-labs/FLUX.1-schnell",
                 prompt: data.prompt,
                 width: data.width,
                 height: data.height,
                 steps: modelSettings?.steps ?? 4,
                 n: data.count,
-            });
+            }) as unknown) as TogetherAIImageResponse;
 
-            // Add type assertion to handle the response properly
-            const togetherResponse =
-                response as unknown as TogetherAIImageResponse;
-
-            if (
-                !togetherResponse.data ||
-                !Array.isArray(togetherResponse.data)
-            ) {
+            if (!imageFile || !imageFile.data || !Array.isArray(imageFile.data)) {
                 throw new Error("Invalid response format from Together AI");
             }
 
-            // Rest of the code remains the same...
+            // Convert the response to base64
             const base64s = await Promise.all(
-                togetherResponse.data.map(async (image) => {
+                imageFile.data.map(async (image) => {
                     if (!image.url) {
                         elizaLogger.error("Missing URL in image data:", image);
                         throw new Error("Missing URL in Together AI response");
@@ -1065,8 +1079,8 @@ export const generateImage = async (
                     : {}),
             };
 
-            // Subscribe to the model
-            const result = await fal.subscribe(model, {
+            // Subscribe to the model using string & {} type to match fal-ai's type definition
+            const result = await fal.subscribe(model as string & {}, {
                 input,
                 logs: true,
                 onQueueUpdate: (update) => {
@@ -1077,7 +1091,7 @@ export const generateImage = async (
             });
 
             // Convert the returned image URLs to base64 to match existing functionality
-            const base64Promises = result.data.images.map(async (image) => {
+            const base64Promises = result.data.images.map(async (image: { url: string; content_type: string }) => {
                 const response = await fetch(image.url);
                 const blob = await response.blob();
                 const buffer = await blob.arrayBuffer();
@@ -1166,29 +1180,48 @@ export const generateWebSearch = async (
         });
 
         if (!response.ok) {
-            throw new elizaLogger.error(
-                `HTTP error! status: ${response.status}`
-            );
+            const error = new Error(`HTTP error! status: ${response.status}`);
+            elizaLogger.error(error);
+            throw error;
         }
 
-        const data: SearchResponse = await response.json();
+        const data = await response.json() as SearchResponse;
         return data;
     } catch (error) {
         elizaLogger.error("Error:", error);
+        throw error; // Re-throw to maintain Promise<SearchResponse> return type
     }
 };
+
 /**
  * Configuration options for generating objects with a model.
  */
 export interface GenerationOptions {
+    /** Runtime environment */
     runtime: IAgentRuntime;
+
+    /** Context for generation */
     context: string;
+
+    /** Model class to use */
     modelClass: ModelClass;
+
+    /** Optional schema for validation */
     schema?: ZodSchema;
+
+    /** Optional schema name */
     schemaName?: string;
+
+    /** Optional schema description */
     schemaDescription?: string;
+
+    /** Optional stop sequences */
     stop?: string[];
+
+    /** Generation mode */
     mode?: "auto" | "json" | "tool";
+
+    /** Optional provider metadata */
     experimental_providerMetadata?: Record<string, unknown>;
 }
 
@@ -1220,6 +1253,7 @@ export const generateObjectV2 = async ({
     schemaDescription,
     stop,
     mode = "json",
+    experimental_providerMetadata,
 }: GenerationOptions): Promise<GenerateObjectResult<unknown>> => {
     if (!context) {
         const errorMessage = "generateObjectV2 context is empty";
@@ -1244,21 +1278,21 @@ export const generateObjectV2 = async ({
 
         const modelOptions: ModelSettings = {
             prompt: context,
-            temperature,
-            maxTokens: max_response_length,
-            frequencyPenalty: frequency_penalty,
-            presencePenalty: presence_penalty,
+            temperature: temperature ?? 0.7,
+            maxTokens: max_response_length ?? 1000,
+            frequencyPenalty: frequency_penalty ?? 0,
+            presencePenalty: presence_penalty ?? 0,
             stop: stop || models[provider].settings.stop,
         };
 
         const response = await handleProvider({
             provider,
             model,
-            apiKey,
+            apiKey: apiKey ?? "",
             schema,
             schemaName,
             schemaDescription,
-            mode,
+            mode: mode as "json" | undefined,
             modelOptions,
             runtime,
             context,
@@ -1355,10 +1389,10 @@ async function handleOpenAI({
     const openai = createOpenAI({ apiKey, baseURL });
     return await aiGenerateObject({
         model: openai.languageModel(model),
-        schema,
+        schema: schema as z.ZodSchema,
         schemaName,
         schemaDescription,
-        mode,
+        mode: mode as "json",
         ...modelOptions,
     });
 }
@@ -1381,10 +1415,10 @@ async function handleAnthropic({
     const anthropic = createAnthropic({ apiKey });
     return await aiGenerateObject({
         model: anthropic.languageModel(model),
-        schema,
+        schema: schema as z.ZodSchema,
         schemaName,
         schemaDescription,
-        mode,
+        mode: mode as "json",
         ...modelOptions,
     });
 }
@@ -1407,10 +1441,11 @@ async function handleGrok({
     const grok = createOpenAI({ apiKey, baseURL: models.grok.endpoint });
     return await aiGenerateObject({
         model: grok.languageModel(model, { parallelToolCalls: false }),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1433,10 +1468,11 @@ async function handleGroq({
     const groq = createGroq({ apiKey });
     return await aiGenerateObject({
         model: groq.languageModel(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1459,10 +1495,11 @@ async function handleGoogle({
     const google = createGoogleGenerativeAI();
     return await aiGenerateObject({
         model: google(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1485,10 +1522,11 @@ async function handleRedPill({
     const redPill = createOpenAI({ apiKey, baseURL: models.redpill.endpoint });
     return await aiGenerateObject({
         model: redPill.languageModel(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1514,10 +1552,11 @@ async function handleOpenRouter({
     });
     return await aiGenerateObject({
         model: openRouter.languageModel(model),
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }
@@ -1543,10 +1582,11 @@ async function handleOllama({
     const ollama = ollamaProvider(model);
     return await aiGenerateObject({
         model: ollama,
-        schema,
+        output: "array",
+        schema: schema as z.Schema<any>,
         schemaName,
         schemaDescription,
-        mode,
+        mode: "json" as const,
         ...modelOptions,
     });
 }

@@ -247,19 +247,19 @@ export interface State {
     agentId?: UUID;
 
     /** Agent's biography */
-    bio: string;
+    bio?: string;
 
     /** Agent's background lore */
-    lore: string;
+    lore?: string;
 
     /** Message handling directions */
-    messageDirections: string;
+    messageDirections?: string;
 
     /** Post handling directions */
-    postDirections: string;
+    postDirections?: string;
 
     /** Current room/conversation ID */
-    roomId: UUID;
+    roomId?: UUID;
 
     /** Optional agent name */
     agentName?: string;
@@ -268,7 +268,7 @@ export interface State {
     senderName?: string;
 
     /** String representation of conversation actors */
-    actors: string;
+    actors?: string;
 
     /** Optional array of actor objects */
     actorsData?: Actor[];
@@ -280,10 +280,10 @@ export interface State {
     goalsData?: Goal[];
 
     /** Recent message history as string */
-    recentMessages: string;
+    recentMessages?: string;
 
     /** Recent message objects */
-    recentMessagesData: Memory[];
+    recentMessagesData?: Memory[];
 
     /** Optional valid action names */
     actionNames?: string;
@@ -453,6 +453,12 @@ export interface Evaluator {
 
     /** Validation function */
     validate: Validator;
+
+    /** Prepare context for evaluation */
+    prepareContext?: (message: Memory, state?: State) => Promise<Record<string, unknown>>;
+
+    /** Evaluate the message */
+    evaluate: (message: Memory, state?: State, context?: Record<string, unknown>) => Promise<string | null>;
 }
 
 /**
@@ -608,103 +614,73 @@ export enum Clients {
     TELEGRAM = "telegram",
     FARCASTER = "farcaster",
 }
+
 /**
- * Configuration for an agent character
+ * Character configuration and attributes
  */
-export type Character = {
-    /** Optional unique identifier */
-    id?: UUID;
+export interface Character {
+    /** Unique identifier in UUID format */
+    id: `${string}-${string}-${string}-${string}-${string}`;
 
     /** Character name */
     name: string;
 
-    /** Optional username */
-    username?: string;
+    /** Character bio/description */
+    bio: string | string[];
 
-    /** Optional system prompt */
-    system?: string;
+    /** Character lore/background */
+    lore: string | string[];
 
-    /** Model provider to use */
+    /** Character personality traits */
+    personality: string[];
+
+    /** Character interests */
+    interests: string[];
+
+    /** Character goals */
+    goals: Goal[];
+
+    /** Model provider for this character */
     modelProvider: ModelProviderName;
-
-    /** Image model provider to use, if different from modelProvider */
-    imageModelProvider?: ModelProviderName;
 
     /** Optional model endpoint override */
     modelEndpointOverride?: string;
 
-    /** Optional prompt templates */
-    templates?: {
-        goalsTemplate?: string;
-        factsTemplate?: string;
-        messageHandlerTemplate?: string;
-        shouldRespondTemplate?: string;
-        continueMessageHandlerTemplate?: string;
-        evaluationTemplate?: string;
-        twitterSearchTemplate?: string;
-        twitterPostTemplate?: string;
-        twitterMessageHandlerTemplate?: string;
-        twitterShouldRespondTemplate?: string;
-        farcasterPostTemplate?: string;
-        farcasterMessageHandlerTemplate?: string;
-        farcasterShouldRespondTemplate?: string;
-        telegramMessageHandlerTemplate?: string;
-        telegramShouldRespondTemplate?: string;
-        discordVoiceHandlerTemplate?: string;
-        discordShouldRespondTemplate?: string;
-        discordMessageHandlerTemplate?: string;
-    };
+    /** System prompt for the character */
+    system?: string;
 
-    /** Character biography */
-    bio: string | string[];
+    /** Image model provider for this character */
+    imageModelProvider?: ModelProviderName;
 
-    /** Character background lore */
-    lore: string[];
+    /** Plugins associated with the character */
+    plugins?: string[];
 
-    /** Example messages */
-    messageExamples: MessageExample[][];
+    /** Knowledge items associated with the character */
+    knowledge?: KnowledgeItem[];
 
-    /** Example posts */
-    postExamples: string[];
+    /** Settings for the character */
+    settings?: Record<string, string>;
 
-    /** Known topics */
-    topics: string[];
+    /** Templates for the character */
+    templates?: Record<string, string>;
 
-    /** Character traits */
-    adjectives: string[];
+    /** Post examples for the character */
+    postExamples?: string[];
 
-    /** Optional knowledge base */
-    knowledge?: string[];
+    /** Message examples for the character */
+    messageExamples?: string[];
 
-    /** Supported client platforms */
-    clients: Clients[];
-
-    /** Available plugins */
-    plugins: Plugin[];
+    /** Topics associated with the character */
+    topics?: string[];
 
     /** Optional configuration */
-    settings?: {
-        secrets?: { [key: string]: string };
-        intiface?: boolean;
-        voice?: {
-            model?: string; // For VITS
-            url?: string; // Legacy VITS support
-            elevenlabs?: {
-                // New structured ElevenLabs config
-                voiceId: string;
-                model?: string;
-                stability?: string;
-                similarityBoost?: string;
-                style?: string;
-                useSpeakerBoost?: string;
-            };
-        };
+    config?: {
         model?: string;
         embeddingModel?: string;
         chains?: {
             evm?: any[];
             solana?: any[];
-            [key: string]: any[];
+            [key: string]: any[] | undefined;
         };
     };
 
@@ -720,8 +696,8 @@ export type Character = {
         };
     };
 
-    /** Writing style guides */
-    style: {
+    /** Optional writing style guides */
+    style?: {
         all: string[];
         chat: string[];
         post: string[];
@@ -735,7 +711,7 @@ export type Character = {
         bio: string;
         nicknames?: string[];
     };
-};
+}
 
 /**
  * Interface for database operations
@@ -913,6 +889,8 @@ export interface IMemoryManager {
 
     addEmbeddingToMemory(memory: Memory): Promise<Memory>;
 
+    get(message: Memory): Promise<Memory[]>;
+
     getMemories(opts: {
         roomId: UUID;
         count?: number;
@@ -1031,6 +1009,19 @@ export interface IAgentRuntime {
         state?: State,
         didRespond?: boolean,
         callback?: HandlerCallback
+    ): Promise<string[]>;
+
+    getEvaluationContext(
+        evaluators: Evaluator[],
+        message: Memory,
+        state?: State
+    ): Promise<Record<string, unknown>>;
+
+    processEvaluators(
+        evaluators: Evaluator[],
+        message: Memory,
+        state?: State,
+        context?: Record<string, unknown>
     ): Promise<string[]>;
 
     ensureParticipantExists(userId: UUID, roomId: UUID): Promise<void>;
@@ -1169,10 +1160,12 @@ export enum LoggingLevel {
     NONE = "none",
 }
 
-export type KnowledgeItem = {
-    id: UUID;
-    content: Content;
-};
+export interface KnowledgeItem {
+    id?: string;
+    content: {
+        text: string;
+    };
+}
 
 export interface ActionResponse {
     like: boolean;

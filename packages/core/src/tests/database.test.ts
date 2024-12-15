@@ -9,7 +9,7 @@ import {
     Participant,
     Relationship,
     UUID,
-} from "../types"; // Adjust based on your types location
+} from "../types.js"; // Adjust based on your types location
 
 class MockDatabaseAdapter extends DatabaseAdapter {
     getMemoryById(_id: UUID): Promise<Memory | null> {

@@ -9,8 +9,8 @@ import {
     Participant,
     IDatabaseAdapter,
 } from "./types.js";
-import { CircuitBreaker } from "./database/CircuitBreaker";
-import { elizaLogger } from "./logger";
+import { CircuitBreaker } from "./database/CircuitBreaker.js";
+import { elizaLogger } from "./logger.js";
 
 /**
  * An abstract class representing a database adapter for managing various entities
@@ -49,6 +49,7 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
         halfOpenMaxAttempts?: number;
     }) {
         this.circuitBreaker = new CircuitBreaker(circuitBreakerConfig);
+        this.db = {} as DB; // Initialize with empty object as it's an abstract class
     }
 
     /**

@@ -36,6 +36,20 @@ export class MemoryManager implements IMemoryManager {
     }
 
     /**
+     * Gets memories related to the given memory.
+     * Base implementation returns recent memories from the same room.
+     * @param memory The memory to get related memories for
+     * @returns A Promise resolving to an array of related Memory objects
+     */
+    async get(memory: Memory): Promise<Memory[]> {
+        return this.getMemories({
+            roomId: memory.roomId,
+            count: 10,
+            unique: true
+        });
+    }
+
+    /**
      * Adds an embedding vector to a memory object. If the memory already has an embedding, it is returned as is.
      * @param memory The memory object to add an embedding to.
      * @returns A Promise resolving to the memory object, potentially updated with an embedding vector.
@@ -171,6 +185,10 @@ export class MemoryManager implements IMemoryManager {
      */
     async createMemory(memory: Memory, unique = false): Promise<void> {
         // TODO: check memory.agentId == this.runtime.agentId
+
+        if (!memory.id) {
+            throw new Error("Memory ID is required");
+        }
 
         const existingMessage =
             await this.runtime.databaseAdapter.getMemoryById(memory.id);

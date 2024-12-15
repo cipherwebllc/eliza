@@ -13,7 +13,7 @@ import {
     UUID,
     Service,
     ServiceType,
-} from "../types";
+} from "../types.js";
 import { CacheManager, MemoryCacheAdapter } from "../cache.js";
 import { describe, expect, vi, beforeEach } from "vitest";
 

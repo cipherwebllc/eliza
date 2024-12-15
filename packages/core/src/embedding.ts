@@ -88,7 +88,7 @@ async function getRemoteEmbedding(
             data: Array<{ embedding: number[] }>;
         }
 
-        const data: EmbeddingResponse = await response.json();
+        const data = await response.json() as EmbeddingResponse;
         return data?.data?.[0].embedding;
     } catch (e) {
         elizaLogger.error("Full error details:", e);
@@ -183,24 +183,26 @@ export async function embed(runtime: IAgentRuntime, input: string) {
     if (config.provider === "Ollama") {
         return await getRemoteEmbedding(input, {
             model: config.model,
-            endpoint:
-                runtime.character.modelEndpointOverride ||
-                models[ModelProviderName.OLLAMA].endpoint,
+            endpoint: (runtime.character.modelEndpointOverride ??
+                models[ModelProviderName.OLLAMA].endpoint) as string,
             isOllama: true,
             dimensions: config.dimensions,
         });
     }
 
     if (config.provider=="GaiaNet") {
+        const endpoint = runtime.character.modelEndpointOverride ??
+            models[ModelProviderName.GAIANET].endpoint ??
+            settings.SMALL_GAIANET_SERVER_URL ??
+            settings.MEDIUM_GAIANET_SERVER_URL ??
+            settings.LARGE_GAIANET_SERVER_URL;
+
+        if (!endpoint) throw new Error("No endpoint available for GaiaNet");
+
         return await getRemoteEmbedding(input, {
             model: config.model,
-            endpoint:
-                runtime.character.modelEndpointOverride ||
-                models[ModelProviderName.GAIANET].endpoint ||
-                settings.SMALL_GAIANET_SERVER_URL ||
-                settings.MEDIUM_GAIANET_SERVER_URL ||
-                settings.LARGE_GAIANET_SERVER_URL,
-            apiKey: settings.GAIANET_API_KEY || runtime.token,
+            endpoint,
+            apiKey: settings.GAIANET_API_KEY ?? runtime.token ?? "",
             dimensions: config.dimensions,
         });
     }
@@ -218,15 +220,18 @@ export async function embed(runtime: IAgentRuntime, input: string) {
     }
 
     // Fallback to remote override
+    const fallbackEndpoint = runtime.character.modelEndpointOverride ??
+        (runtime.character.modelProvider ?
+            models[runtime.character.modelProvider].endpoint :
+            models[ModelProviderName.OLLAMA].endpoint);
+    if (!fallbackEndpoint) throw new Error("No fallback endpoint available");
+
     return await getRemoteEmbedding(input, {
         model: config.model,
-        endpoint:
-            runtime.character.modelEndpointOverride ||
-            models[runtime.character.modelProvider].endpoint,
-        apiKey: runtime.token,
+        endpoint: fallbackEndpoint,
+        apiKey: runtime.token ?? "",
         dimensions: config.dimensions,
     });
-
     async function getLocalEmbedding(input: string): Promise<number[]> {
         elizaLogger.debug("DEBUG - Inside getLocalEmbedding function");
 
