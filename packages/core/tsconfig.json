@@ -13,7 +13,13 @@
         "rootDir": "./src",
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "composite": true,
+        "allowJs": true,
+        "isolatedModules": true,
+        "strict": true,
+        "noImplicitAny": false,
+        "forceConsistentCasingInFileNames": true
     },
     "include": [
         "src/**/*"
@@ -21,7 +27,8 @@
     "exclude": [
         "node_modules",
         "dist",
-        "src/**/*.d.ts",
-        "types/**/*.test.ts"
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/__tests__/**"
     ]
 }
