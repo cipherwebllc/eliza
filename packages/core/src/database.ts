@@ -20,7 +20,7 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
     /**
      * The database instance.
      */
-    db!: DB;
+    db: any;
 
     /**
      * Circuit breaker instance used to handle fault tolerance and prevent cascading failures.
@@ -48,6 +48,7 @@ export abstract class DatabaseAdapter<DB = any> implements IDatabaseAdapter {
         resetTimeout?: number;
         halfOpenMaxAttempts?: number;
     }) {
+        this.db = null;
         this.circuitBreaker = new CircuitBreaker(circuitBreakerConfig);
     }
 
