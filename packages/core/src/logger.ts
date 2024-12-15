@@ -117,7 +117,7 @@ class ElizaLogger {
         console.clear();
     }
 
-    print(foregroundColor = "white", backgroundColor = "black", ...strings) {
+    print(foregroundColor = "white", backgroundColor = "black", ...strings: unknown[]) {
         // Convert objects to strings
         const processedStrings = strings.map((item) => {
             if (typeof item === "object") {
@@ -181,7 +181,7 @@ class ElizaLogger {
         }
     }
 
-    log(...strings) {
+    log(...strings: unknown[]) {
         this.#logWithStyle(strings, {
             fg: "white",
             bg: "",
@@ -190,7 +190,7 @@ class ElizaLogger {
         });
     }
 
-    warn(...strings) {
+    warn(...strings: unknown[]) {
         this.#logWithStyle(strings, {
             fg: "yellow",
             bg: "",
@@ -199,7 +199,7 @@ class ElizaLogger {
         });
     }
 
-    error(...strings) {
+    error(...strings: unknown[]) {
         this.#logWithStyle(strings, {
             fg: "red",
             bg: "",
@@ -208,7 +208,7 @@ class ElizaLogger {
         });
     }
 
-    info(...strings) {
+    info(...strings: unknown[]) {
         this.#logWithStyle(strings, {
             fg: "blue",
             bg: "",
@@ -217,7 +217,7 @@ class ElizaLogger {
         });
     }
 
-    debug(...strings) {
+    debug(...strings: unknown[]) {
         if (!this.verbose) {
             // for diagnosing verbose logging issues
             // console.log(
@@ -234,7 +234,7 @@ class ElizaLogger {
         });
     }
 
-    success(...strings) {
+    success(...strings: unknown[]) {
         this.#logWithStyle(strings, {
             fg: "green",
             bg: "",
@@ -243,7 +243,7 @@ class ElizaLogger {
         });
     }
 
-    assert(...strings) {
+    assert(...strings: unknown[]) {
         this.#logWithStyle(strings, {
             fg: "cyan",
             bg: "",
