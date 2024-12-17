@@ -1,34 +1,39 @@
 {
+    "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "declaration": true,
-        "declarationMap": true,
+        "outDir": "dist",
+        "rootDir": "src",
         "moduleResolution": "NodeNext",
         "module": "NodeNext",
-        "target": "ESNext",
-        "lib": [
-            "ESNext",
-            "dom"
-        ],
-        "outDir": "./dist",
-        "rootDir": "./src",
+        "target": "ES2021",
+        "lib": ["ES2021", "DOM"],
+        "sourceMap": true,
+        "declaration": true,
+        "declarationMap": true,
+        "composite": true,
+        "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "resolveJsonModule": true,
-        "composite": true,
+        "forceConsistentCasingInFileNames": true,
         "allowJs": true,
-        "isolatedModules": true,
-        "strict": true,
-        "noImplicitAny": false,
-        "forceConsistentCasingInFileNames": true
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "noImplicitAny": true,
+        "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
+        "verbatimModuleSyntax": true,
+        "moduleDetection": "force",
+        "incremental": true,
+        "preserveSymlinks": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.json"
     ],
     "exclude": [
         "node_modules",
         "dist",
         "**/*.test.ts",
-        "**/*.spec.ts",
-        "**/__tests__/**"
+        "test_resources"
     ]
 }
