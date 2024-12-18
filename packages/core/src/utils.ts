@@ -1,3 +1,3 @@
-export { elizaLogger } from "./logger.ts";
-export { embed } from "./embedding.ts";
-export { AgentRuntime } from "./runtime.ts";
+export { elizaLogger } from "./logger.js";
+export { embed } from "./embedding.js";
+export { AgentRuntime } from "./runtime.js";

@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 import fs from "fs";
 import path from "path";
-import elizaLogger from "./logger.ts";
+import elizaLogger from "./logger.js";
 
 elizaLogger.info("Loading embedding settings:", {
     USE_OPENAI_EMBEDDING: process.env.USE_OPENAI_EMBEDDING,

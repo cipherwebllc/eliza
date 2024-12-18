@@ -247,16 +247,16 @@ export interface State {
     agentId?: UUID;
 
     /** Agent's biography */
-    bio: string;
+    bio?: string;
 
     /** Agent's background lore */
-    lore: string;
+    lore?: string;
 
     /** Message handling directions */
-    messageDirections: string;
+    messageDirections?: string;
 
     /** Post handling directions */
-    postDirections: string;
+    postDirections?: string;
 
     /** Current room/conversation ID */
     roomId: UUID;
@@ -456,16 +456,14 @@ export interface Evaluator {
 }
 
 /**
- * Provider for external data/services
+ * A context provider that provides additional context for message generation
  */
-export interface Provider {
-    /** Data retrieval function */
-    get: (
-        runtime: IAgentRuntime,
-        message: Memory,
-        state?: State
-    ) => Promise<any>;
-}
+export type Provider = {
+    /** The name of the provider */
+    name: string;
+    /** The function that provides the context */
+    provide: (runtime: IAgentRuntime) => Promise<string>;
+};
 
 /**
  * Represents a relationship between users
@@ -704,7 +702,7 @@ export type Character = {
         chains?: {
             evm?: any[];
             solana?: any[];
-            [key: string]: any[];
+            [key: string]: any[] | undefined;
         };
     };
 
@@ -1169,8 +1167,10 @@ export enum LoggingLevel {
     NONE = "none",
 }
 
-export type KnowledgeItem = {
+export interface KnowledgeItem {
+    /** Unique identifier for the knowledge item */
     id: UUID;
+    /** Content of the knowledge item */
     content: Content;
 };
 

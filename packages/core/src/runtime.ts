@@ -4,25 +4,24 @@ import {
     composeActionExamples,
     formatActionNames,
     formatActions,
-} from "./actions.ts";
-import { addHeader, composeContext } from "./context.ts";
-import { defaultCharacter } from "./defaultCharacter.ts";
+} from "./actions.js";
+import { composeContext } from "./context.js";
+import { defaultCharacter } from "./defaultCharacter.js";
 import {
     evaluationTemplate,
     formatEvaluatorExamples,
     formatEvaluatorNames,
     formatEvaluators,
-} from "./evaluators.ts";
-import { generateText } from "./generation.ts";
-import { formatGoalsAsString, getGoals } from "./goals.ts";
-import { elizaLogger } from "./index.ts";
-import knowledge from "./knowledge.ts";
-import { MemoryManager } from "./memory.ts";
-import { formatActors, formatMessages, getActorDetails } from "./messages.ts";
-import { parseJsonArrayFromText } from "./parsing.ts";
-import { formatPosts } from "./posts.ts";
-import { getProviders } from "./providers.ts";
-import settings from "./settings.ts";
+} from "./evaluators.js";
+import { generateText } from "./generation.js";
+import { formatGoalsAsString, getGoals } from "./goals.js";
+import { elizaLogger } from "./index.js";
+import { MemoryManager } from "./memory.js";
+import { formatActors, formatMessages, getActorDetails } from "./messages.js";
+import { parseJsonArrayFromText } from "./parsing.js";
+import { formatPosts } from "./posts.js";
+import { getProviders } from "./providers.js";
+import { embed, getEmbeddingZeroVector } from "./embedding.js";
 import {
     Character,
     Goal,
@@ -32,6 +31,7 @@ import {
     IDatabaseAdapter,
     IMemoryManager,
     KnowledgeItem,
+    Media,
     ModelClass,
     ModelProviderName,
     Plugin,
@@ -44,8 +44,9 @@ import {
     type Actor,
     type Evaluator,
     type Memory,
-} from "./types.ts";
-import { stringToUuid } from "./uuid.ts";
+} from "./types.js";
+import { stringToUuid } from "./uuid.js";
+import { addHeader } from "./formatting.js";
 
 /**
  * Represents the runtime environment for an agent, handling message processing,
@@ -96,12 +97,12 @@ export class AgentRuntime implements IAgentRuntime {
     /**
      * The model to use for generateText.
      */
-    modelProvider: ModelProviderName;
+    modelProvider: ModelProviderName = ModelProviderName.OPENAI;
 
     /**
      * The model to use for generateImage.
      */
-    imageModelProvider: ModelProviderName;
+    imageModelProvider: ModelProviderName = ModelProviderName.OPENAI;
 
     /**
      * Fetch function to use
@@ -427,30 +428,32 @@ export class AgentRuntime implements IAgentRuntime {
                 item.slice(0, 100)
             );
 
-            await knowledge.set(this, {
+            await this.knowledgeManager.createMemory({
                 id: knowledgeId,
+                agentId: this.agentId,
+                roomId: this.agentId,
+                userId: this.agentId,
+                createdAt: Date.now(),
                 content: {
                     text: item,
                 },
+                embedding: getEmbeddingZeroVector(),
             });
         }
     }
 
-    getSetting(key: string) {
-        // check if the key is in the character.settings.secrets object
+    getSetting(key: string): string | null {
+        // first check if it's in the secrets object
         if (this.character.settings?.secrets?.[key]) {
             return this.character.settings.secrets[key];
         }
         // if not, check if it's in the settings object
-        if (this.character.settings?.[key]) {
-            return this.character.settings[key];
-        }
-
-        // if not, check if it's in the settings object
-        if (settings[key]) {
+        const settings = this.character.settings as Record<string, any>;
+        if (settings?.[key]) {
             return settings[key];
         }
 
+        // if not found, return null to match interface
         return null;
     }
 
@@ -572,7 +575,7 @@ export class AgentRuntime implements IAgentRuntime {
      * Evaluate the message and state using the registered evaluators.
      * @param message The message to evaluate.
      * @param state The state of the agent.
-     * @param didRespond Whether the agent responded to the message.~
+     * @param didRespond Whether the agent responded to the message.
      * @param callback The handler callback
      * @returns The results of the evaluation.
      */
@@ -600,19 +603,26 @@ export class AgentRuntime implements IAgentRuntime {
         );
 
         const resolvedEvaluators = await Promise.all(evaluatorPromises);
-        const evaluatorsData = resolvedEvaluators.filter(Boolean);
+        const evaluatorsData = resolvedEvaluators.filter((e): e is Evaluator => e !== null);
 
         // if there are no evaluators this frame, return
         if (evaluatorsData.length === 0) {
             return [];
         }
 
+        // Create a new state object with all required fields
+        const evaluationState: State = {
+            ...(state || {}),
+            roomId: state?.roomId || message.roomId || this.agentId,
+            actors: state?.actors || "",  // Required field
+            recentMessages: state?.recentMessages || "",  // Required field
+            recentMessagesData: state?.recentMessagesData || [],  // Required field
+            evaluators: formatEvaluators(evaluatorsData),
+            evaluatorNames: formatEvaluatorNames(evaluatorsData),
+        };
+
         const context = composeContext({
-            state: {
-                ...state,
-                evaluators: formatEvaluators(evaluatorsData),
-                evaluatorNames: formatEvaluatorNames(evaluatorsData),
-            },
+            state: evaluationState,
             template:
                 this.character.templates?.evaluationTemplate ||
                 evaluationTemplate,
@@ -772,28 +782,10 @@ export class AgentRuntime implements IAgentRuntime {
             }),
         ]);
 
-        const goals = formatGoalsAsString({ goals: goalsData });
-
-        const actors = formatActors({ actors: actorsData ?? [] });
-
-        const recentMessages = formatMessages({
-            messages: recentMessagesData,
-            actors: actorsData,
-        });
-
-        const recentPosts = formatPosts({
-            messages: recentMessagesData,
-            actors: actorsData,
-            conversationHeader: false,
-        });
-
-        // const lore = formatLore(loreData);
-
         const senderName = actorsData?.find(
             (actor: Actor) => actor.id === userId
         )?.name;
 
-        // TODO: We may wish to consolidate and just accept character.name here instead of the actor name
         const agentName =
             actorsData?.find((actor: Actor) => actor.id === this.agentId)
                 ?.name || this.character.name;
@@ -808,25 +800,20 @@ export class AgentRuntime implements IAgentRuntime {
             );
 
             if (lastMessageWithAttachment) {
-                const lastMessageTime = lastMessageWithAttachment.createdAt;
+                const lastMessageTime = lastMessageWithAttachment.createdAt ?? Date.now();
                 const oneHourBeforeLastMessage =
                     lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
 
                 allAttachments = recentMessagesData
                     .reverse()
-                    .map((msg) => {
+                    .filter((msg) => {
                         const msgTime = msg.createdAt ?? Date.now();
                         const isWithinTime =
                             msgTime >= oneHourBeforeLastMessage;
-                        const attachments = msg.content.attachments || [];
-                        if (!isWithinTime) {
-                            attachments.forEach((attachment) => {
-                                attachment.text = "[Hidden]";
-                            });
-                        }
-                        return attachments;
+                        return isWithinTime && msg.content.attachments && msg.content.attachments.length > 0;
                     })
-                    .flat();
+                    .map((msg) => msg.content.attachments)
+                    .flat() as Media[];
             }
         }
 
@@ -905,7 +892,7 @@ Text: ${attachment.text}
                 });
 
             // Sort messages by timestamp in descending order
-            existingMemories.sort((a, b) => b.createdAt - a.createdAt);
+            existingMemories.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
             // Take the most recent messages
             const recentInteractionsData = existingMemories.slice(0, 20);
@@ -972,179 +959,85 @@ Text: ${attachment.text}
                 .join(" ");
         }
 
-        const knowledegeData = await knowledge.get(this, message);
+        // Convert Memory[] to KnowledgeItem[] by mapping the required fields
+        const knowledgeData = (await this.knowledgeManager.searchMemoriesByEmbedding(
+            await embed(this, message.content.text),
+            { roomId: this.agentId, count: 5, match_threshold: 0.1 }
+        )).map(memory => ({
+            id: memory.id,
+            content: memory.content
+        }));
 
-        const formattedKnowledge = formatKnowledge(knowledegeData);
+        const formattedKnowledge = this.formatKnowledge(knowledgeData);
 
-        const initialState = {
+        const initialState: State = {
             agentId: this.agentId,
-            agentName,
-            bio,
-            lore,
-            adjective:
-                this.character.adjectives &&
-                this.character.adjectives.length > 0
-                    ? this.character.adjectives[
-                          Math.floor(
-                              Math.random() * this.character.adjectives.length
-                          )
-                      ]
-                    : "",
-            knowledge: formattedKnowledge,
-            knowledgeData: knowledegeData,
-            // Recent interactions between the sender and receiver, formatted as messages
-            recentMessageInteractions: formattedMessageInteractions,
-            // Recent interactions between the sender and receiver, formatted as posts
-            recentPostInteractions: formattedPostInteractions,
-            // Raw memory[] array of interactions
-            recentInteractionsData: recentInteractions,
-            // randomly pick one topic
-            topic:
-                this.character.topics && this.character.topics.length > 0
-                    ? this.character.topics[
-                          Math.floor(
-                              Math.random() * this.character.topics.length
-                          )
-                      ]
-                    : null,
-            topics:
-                this.character.topics && this.character.topics.length > 0
-                    ? `${this.character.name} is interested in ` +
-                      this.character.topics
-                          .sort(() => 0.5 - Math.random())
-                          .slice(0, 5)
-                          .map((topic, index) => {
-                              if (index === this.character.topics.length - 2) {
-                                  return topic + " and ";
-                              }
-                              // if last topic, don't add a comma
-                              if (index === this.character.topics.length - 1) {
-                                  return topic;
-                              }
-                              return topic + ", ";
-                          })
-                          .join("")
-                    : "",
-            characterPostExamples:
-                formattedCharacterPostExamples &&
-                formattedCharacterPostExamples.replaceAll("\n", "").length > 0
-                    ? addHeader(
-                          `# Example Posts for ${this.character.name}`,
-                          formattedCharacterPostExamples
-                      )
-                    : "",
-            characterMessageExamples:
-                formattedCharacterMessageExamples &&
-                formattedCharacterMessageExamples.replaceAll("\n", "").length >
-                    0
-                    ? addHeader(
-                          `# Example Conversations for ${this.character.name}`,
-                          formattedCharacterMessageExamples
-                      )
-                    : "",
-            messageDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.chat.length > 0
-                    ? addHeader(
-                          "# Message Directions for " + this.character.name,
-                          (() => {
-                              const all = this.character?.style?.all || [];
-                              const chat = this.character?.style?.chat || [];
-                              return [...all, ...chat].join("\n");
-                          })()
-                      )
-                    : "",
-
-            postDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.post.length > 0
-                    ? addHeader(
-                          "# Post Directions for " + this.character.name,
-                          (() => {
-                              const all = this.character?.style?.all || [];
-                              const post = this.character?.style?.post || [];
-                              return [...all, ...post].join("\n");
-                          })()
-                      )
-                    : "",
-
-            //old logic left in for reference
-            //food for thought. how could we dynamically decide what parts of the character to add to the prompt other than random? rag? prompt the llm to decide?
-            /*
-            postDirections:
-                this.character?.style?.all?.length > 0 ||
-                this.character?.style?.post.length > 0
-                    ? addHeader(
-                            "# Post Directions for " + this.character.name,
-                            (() => {
-                                const all = this.character?.style?.all || [];
-                                const post = this.character?.style?.post || [];
-                                const shuffled = [...all, ...post].sort(
-                                    () => 0.5 - Math.random()
-                                );
-                                return shuffled
-                                    .slice(0, conversationLength / 2)
-                                    .join("\n");
-                            })()
-                        )
-                    : "",*/
-            // Agent runtime stuff
-            senderName,
-            actors:
-                actors && actors.length > 0
-                    ? addHeader("# Actors", actors)
-                    : "",
-            actorsData,
+            bio: bio || "",
+            lore: await this.getSetting("lore") || "",
+            messageDirections: await this.getSetting("messageDirections") || "",
+            postDirections: await this.getSetting("postDirections") || "",
             roomId,
-            goals:
-                goals && goals.length > 0
-                    ? addHeader(
-                          "# Goals\n{{agentName}} should prioritize accomplishing the objectives that are in progress.",
-                          goals
-                      )
-                    : "",
+            agentName: this.character.name,
+            senderName,
+            actors: formatActors({ actors: actorsData }),
+            actorsData,
+            goals: formatGoalsAsString({ goals: goalsData }),
             goalsData,
-            recentMessages:
-                recentMessages && recentMessages.length > 0
-                    ? addHeader("# Conversation Messages", recentMessages)
-                    : "",
-            recentPosts:
-                recentPosts && recentPosts.length > 0
-                    ? addHeader("# Posts in Thread", recentPosts)
-                    : "",
+            recentMessages: formatMessages({ messages: recentMessagesData, actors: actorsData }),
             recentMessagesData,
-            attachments:
-                formattedAttachments && formattedAttachments.length > 0
-                    ? addHeader("# Attachments", formattedAttachments)
-                    : "",
+            actionNames: formatActionNames(this.actions),
+            actions: formatActions(this.actions),
+            actionsData: this.actions,
+            actionExamples: composeActionExamples(this.actions, 5),
+            providers: this.providers.map(p => p.name).join(", "),
+            recentInteractions: formattedMessageInteractions,
+            recentInteractionsData: recentInteractions,
+            formattedConversation: formatMessages({ messages: recentMessagesData, actors: actorsData }),
+            knowledge: formattedKnowledge,
+            knowledgeData,
+            topic: this.character.topics && this.character.topics.length > 0
+                ? this.character.topics[Math.floor(Math.random() * this.character.topics.length)]
+                : "",
+            topics: Array.isArray(this.character.topics)
+                ? this.character.topics
+                    .map((topic, index, array) => {
+                        if (index === array.length - 2) {
+                            return topic + " and ";
+                        }
+                        if (index === array.length - 1) {
+                            return topic;
+                        }
+                        return topic + ", ";
+                    })
+                    .join("")
+                : (typeof this.character.topics === 'string' ? this.character.topics : ""),
+            characterPostExamples: formattedCharacterPostExamples?.length
+                ? addHeader(`# Example Posts for ${this.character.name}`, formattedCharacterPostExamples)
+                : "",
+            characterMessageExamples: formattedCharacterMessageExamples?.length
+                ? addHeader(`# Example Messages for ${this.character.name}`, formattedCharacterMessageExamples)
+                : "",
             ...additionalKeys,
         } as State;
 
-        const actionPromises = this.actions.map(async (action: Action) => {
-            const result = await action.validate(this, message, initialState);
-            if (result) {
-                return action;
+        const actionPromises = this.actions.map(async (action) => {
+            if (await action.validate(this, message)) {
+                return action.handler(this, message);
             }
             return null;
         });
 
         const evaluatorPromises = this.evaluators.map(async (evaluator) => {
-            const result = await evaluator.validate(
-                this,
-                message,
-                initialState
-            );
-            if (result) {
-                return evaluator;
+            if (await evaluator.validate(this, message)) {
+                return evaluator.handler(this, message);
             }
             return null;
         });
-
         const [resolvedEvaluators, resolvedActions, providers] =
             await Promise.all([
                 Promise.all(evaluatorPromises),
                 Promise.all(actionPromises),
-                getProviders(this, message, initialState),
+                getProviders(this),
             ]);
 
         const evaluatorsData = resolvedEvaluators.filter(
@@ -1182,10 +1075,12 @@ Text: ${attachment.text}
                 evaluatorsData.length > 0
                     ? formatEvaluatorExamples(evaluatorsData)
                     : "",
-            providers: addHeader(
-                `# Additional Information About ${this.character.name} and The World`,
-                providers
-            ),
+            providers: providers && providers.length > 0
+                ? addHeader(
+                    "# Additional Information",
+                    Array.isArray(providers) ? providers.join(", ") : providers
+                )
+                : "",
         };
 
         return { ...initialState, ...actionState } as State;
@@ -1194,7 +1089,7 @@ Text: ${attachment.text}
     async updateRecentMessageState(state: State): Promise<State> {
         const conversationLength = this.getConversationLength();
         const recentMessagesData = await this.messageManager.getMemories({
-            roomId: state.roomId,
+            roomId: state.roomId || stringToUuid("default-room"),
             count: conversationLength,
             unique: false,
         });
@@ -1208,7 +1103,7 @@ Text: ${attachment.text}
             }),
         });
 
-        let allAttachments = [];
+        let allAttachments: Media[] = [];
 
         if (recentMessagesData && Array.isArray(recentMessagesData)) {
             const lastMessageWithAttachment = recentMessagesData.find(
@@ -1217,7 +1112,7 @@ Text: ${attachment.text}
                     msg.content.attachments.length > 0
             );
 
-            if (lastMessageWithAttachment) {
+            if (lastMessageWithAttachment && lastMessageWithAttachment.createdAt) {
                 const lastMessageTime = lastMessageWithAttachment.createdAt;
                 const oneHourBeforeLastMessage =
                     lastMessageTime - 60 * 60 * 1000; // 1 hour before last message
@@ -1225,7 +1120,7 @@ Text: ${attachment.text}
                 allAttachments = recentMessagesData
                     .filter((msg) => {
                         const msgTime = msg.createdAt;
-                        return msgTime >= oneHourBeforeLastMessage;
+                        return msgTime !== undefined && msgTime >= oneHourBeforeLastMessage;
                     })
                     .flatMap((msg) => msg.content.attachments || []);
             }
@@ -1254,10 +1149,9 @@ Text: ${attachment.text}
             attachments: formattedAttachments,
         } as State;
     }
-}
 
-const formatKnowledge = (knowledge: KnowledgeItem[]) => {
-    return knowledge
-        .map((knowledge) => `- ${knowledge.content.text}`)
-        .join("\n");
-};
+    private formatKnowledge(items: KnowledgeItem[]): string {
+        if (!items || items.length === 0) return "";
+        return items.map(item => item.content.text).join("\n\n");
+    }
+}

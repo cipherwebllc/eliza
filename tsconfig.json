@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ES2020",
+        "target": "ES2021",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "esModuleInterop": true,
@@ -11,9 +11,16 @@
         "sourceMap": true,
         "outDir": "dist",
         "baseUrl": ".",
+        "composite": true,
         "paths": {
             "@ai16z/*": ["packages/*/src"]
         }
     },
-    "exclude": ["node_modules", "dist"]
+    "include": ["packages/*/src/**/*"],
+    "references": [
+        { "path": "./packages/core" },
+        { "path": "./packages/client-bluesky" },
+        { "path": "./packages/client-mastodon" },
+        { "path": "./packages/client-misskey" }
+    ]
 }

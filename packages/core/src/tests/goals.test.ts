@@ -3,7 +3,7 @@ import {
     formatGoalsAsString,
     updateGoal,
     createGoal,
-} from "../goals.ts";
+} from "../goals.js";
 import {
     Goal,
     GoalStatus,
@@ -14,7 +14,7 @@ import {
     Service,
     ServiceType,
 } from "../types";
-import { CacheManager, MemoryCacheAdapter } from "../cache.ts";
+import { CacheManager, MemoryCacheAdapter } from "../cache.js";
 import { describe, expect, vi, beforeEach } from "vitest";
 
 // Mock the database adapter

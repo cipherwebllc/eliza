@@ -1,5 +1,5 @@
-import { getModel, getEndpoint } from "../models.ts";
-import { ModelProviderName, ModelClass } from "../types.ts";
+import { getModel, getEndpoint } from "../models.js";
+import { ModelProviderName, ModelClass } from "../types.js";
 import { describe, test, expect, vi } from "vitest";
 
 vi.mock("../settings", () => {

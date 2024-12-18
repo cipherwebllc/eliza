@@ -4,18 +4,18 @@ import {
 } from "@ai16z/adapter-sqlite";
 import { SqlJsDatabaseAdapter } from "@ai16z/adapter-sqljs";
 import { SupabaseDatabaseAdapter } from "@ai16z/adapter-supabase";
-import { DatabaseAdapter } from "../database.ts";
-import { getEndpoint } from "../models.ts";
-import { AgentRuntime } from "../runtime.ts";
-import { Action, Evaluator, ModelProviderName, Provider } from "../types.ts";
+import { DatabaseAdapter } from "../database.js";
+import { getEndpoint } from "../models.js";
+import { AgentRuntime } from "../runtime.js";
+import { Action, Evaluator, ModelProviderName, Provider } from "../types.js";
 import {
     SUPABASE_ANON_KEY,
     SUPABASE_URL,
     TEST_EMAIL,
     TEST_PASSWORD,
     zeroUuid,
-} from "./constants.ts";
-import { User } from "./types.ts";
+} from "./constants.js";
+import { User } from "./types.js";
 
 export async function createRuntime({
     env,

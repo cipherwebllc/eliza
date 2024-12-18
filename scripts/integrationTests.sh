@@ -9,6 +9,12 @@ if (( CURRENT_NODE_VERSION < REQUIRED_NODE_VERSION )); then
     exit 1
 fi
 
+# Check for required API key
+if [ -z "$OPENAI_API_KEY" ]; then
+    echo "OPENAI_API_KEY not set, skipping integration tests"
+    exit 0
+fi
+
 # Navigate to the script's directory
 cd "$(dirname "$0")"/..
 

@@ -1,17 +1,32 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from 'tsup';
 
 export default defineConfig({
-    entry: ["src/index.ts"],
-    outDir: "dist",
-    sourcemap: true,
+    entry: ['src/index.ts'],
+    format: ['esm'],
+    dts: {
+        compilerOptions: {
+            moduleResolution: 'NodeNext',
+            composite: false,
+            preserveSymlinks: true,
+            verbatimModuleSyntax: true
+        }
+    },
     clean: true,
-    format: ["esm"], // Ensure you're targeting CommonJS
+    sourcemap: true,
+    target: 'es2021',
+    platform: 'node',
     external: [
-        "dotenv", // Externalize dotenv to prevent bundling
-        "fs", // Externalize fs to use Node.js built-in module
-        "path", // Externalize other built-ins if necessary
-        "http",
-        "https",
-        // Add other modules you want to externalize
-    ],
+        'fs',
+        'path',
+        'url',
+        'http',
+        'https',
+        'crypto',
+        'node:fs',
+        'node:path',
+        'node:url',
+        'node:http',
+        'node:https',
+        'node:crypto'
+    ]
 });

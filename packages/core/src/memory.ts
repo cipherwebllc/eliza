@@ -1,11 +1,11 @@
-import { embed, getEmbeddingZeroVector } from "./embedding.ts";
-import elizaLogger from "./logger.ts";
+import { embed, getEmbeddingZeroVector } from "./embedding.js";
+import elizaLogger from "./logger.js";
 import {
     IAgentRuntime,
     IMemoryManager,
     type Memory,
     type UUID,
-} from "./types.ts";
+} from "./types.js";
 
 const defaultMatchThreshold = 0.1;
 const defaultMatchCount = 10;
@@ -171,6 +171,11 @@ export class MemoryManager implements IMemoryManager {
      */
     async createMemory(memory: Memory, unique = false): Promise<void> {
         // TODO: check memory.agentId == this.runtime.agentId
+
+        if (!memory.id) {
+            elizaLogger.error("Memory ID is undefined");
+            return;
+        }
 
         const existingMessage =
             await this.runtime.databaseAdapter.getMemoryById(memory.id);

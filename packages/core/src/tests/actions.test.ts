@@ -3,14 +3,14 @@ import {
     composeActionExamples,
     formatActionNames,
     formatActions,
-} from "../actions";
+} from "../actions.js";
 import {
     Action,
     HandlerCallback,
     IAgentRuntime,
     Memory,
     State,
-} from "../types";
+} from "../types.js";
 
 describe("Actions", () => {
     const mockActions: Action[] = [
