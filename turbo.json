@@ -5,23 +5,13 @@
             "dependsOn": ["^build"],
             "outputs": ["dist/**"]
         },
-        "@ai16z/client-mastodon#build": {
-            "outputs": ["dist/**"],
-            "dependsOn": ["@ai16z/eliza#build"]
-        },
-        "@ai16z/client-misskey#build": {
-            "outputs": ["dist/**"],
-            "dependsOn": ["@ai16z/eliza#build"]
-        },
         "test": {
             "dependsOn": ["build"]
         },
-        "lint": {
-            "outputs": []
-        },
+        "lint": {},
         "dev": {
-            "persistent": true,
-            "cache": false
+            "cache": false,
+            "persistent": true
         }
     }
 }
